@@ -33,8 +33,8 @@ router.post('/login', async (req, res) => {
 router.get('/stats', authenticateAdmin, async (req, res) => {
     try {
         const [totalBusinesses] = await db.execute('SELECT COUNT(*) as count FROM users');
-        const [activeSubs] = await db.execute('SELECT COUNT(*) as count FROM subscriptions WHERE status = "active" AND expiry_date > NOW()');
-        const [totalRevenue] = await db.execute('SELECT SUM(amount) as total FROM subscriptions WHERE status = "active"');
+        const [activeSubs] = await db.execute('SELECT COUNT(*) as count FROM subscriptions WHERE status = \'active\' AND expiry_date > NOW()');
+        const [totalRevenue] = await db.execute('SELECT SUM(amount) as total FROM subscriptions WHERE status = \'active\'');
         const [totalMessages] = await db.execute('SELECT COUNT(*) as count FROM messages');
         const [newSignups] = await db.execute('SELECT COUNT(*) as count FROM users WHERE created_at >= CURDATE()');
 
