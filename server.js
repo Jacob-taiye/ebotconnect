@@ -46,6 +46,27 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Auto-Database Setup for Cloud Deployment
+const initializeDatabase = async () => {
+  const db = require('./config/db');
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, business_name VARCHAR(255), email VARCHAR(255) UNIQUE, password VARCHAR(255), phone VARCHAR(20), address TEXT, logo VARCHAR(255), status ENUM('active', 'suspended') DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS subscriptions (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, plan_name VARCHAR(100), amount DECIMAL(10, 2), status ENUM('active', 'inactive', 'expired') DEFAULT 'inactive', start_date DATETIME, expiry_date DATETIME, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS business_info (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, description TEXT, products TEXT, prices TEXT, faqs TEXT, working_hours VARCHAR(255), welcome_message TEXT, auto_reply_message TEXT, is_active BOOLEAN DEFAULT TRUE, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS whatsapp_sessions (user_id INT NOT NULL, session_key VARCHAR(255) NOT NULL, session_data LONGTEXT, status ENUM('connected', 'disconnected') DEFAULT 'disconnected', connected_at DATETIME, PRIMARY KEY (user_id, session_key), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS messages (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, customer_number VARCHAR(20), message TEXT, bot_reply TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS admins (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) UNIQUE, email VARCHAR(255) UNIQUE, password VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS platform_settings (id INT AUTO_INCREMENT PRIMARY KEY, setting_key VARCHAR(100) UNIQUE, setting_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`
+  ];
+  try {
+    for (const sql of tables) { await db.execute(sql); }
+    console.log('✓ Database tables initialized');
+  } catch (err) {
+    console.error('! Database initialization warning:', err.message);
+  }
+};
+initializeDatabase();
+
 // Background Task: Check for expired subscriptions every hour
 const db = require('./config/db');
 const { initializeWhatsApp } = require('./services/whatsapp');
