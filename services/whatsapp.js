@@ -103,9 +103,11 @@ async function initializeWhatsApp(userId, io) {
     const uId = parseInt(userId);
     
     if (sessions.has(uId)) {
+        console.log(`[SESSION] User ${uId} already has an active session.`);
         return sessions.get(uId);
     }
     if (initializing.has(uId)) {
+        console.log(`[SESSION] Already initializing for user ${uId}, skipping...`);
         return; 
     }
 
