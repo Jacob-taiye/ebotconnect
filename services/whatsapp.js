@@ -142,12 +142,16 @@ async function initializeWhatsApp(userId, io) {
         if (qr) {
             const qrDataUrl = await qrcode.toDataURL(qr);
             io.to(`user_${uId}`).emit('qr', qrDataUrl);
+            // Ensure we clear initializing state so user can try again if they miss it
+            initializing.delete(uId);
         }
 
         if (connection === 'close') {
             initializing.delete(uId);
             const error = lastDisconnect?.error;
             const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
+            
+            console.log(`[SESSION] Closed for user ${uId}. Reason: ${statusCode}`);
             
             const isFatal = [
                 DisconnectReason.loggedOut,
@@ -157,10 +161,13 @@ async function initializeWhatsApp(userId, io) {
             sessions.delete(uId);
 
             if (!isFatal) {
-                setTimeout(() => initializeWhatsApp(uId, io), 5000);
+                // Only retry if not fatal, and wait 10 seconds
+                console.log(`[SESSION] Retrying connection for user ${uId} in 10s...`);
+                setTimeout(() => initializeWhatsApp(uId, io), 10000);
             } else {
-                await db.execute('UPDATE whatsapp_sessions SET status = \'disconnected\' WHERE user_id = ? AND session_key = \'status_meta\'', [uId]);
+                await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
                 io.to(`user_${uId}`).emit('status', 'disconnected');
+                io.to(`user_${uId}`).emit('error', 'Session logged out or expired. Please scan again.');
             }
         } else if (connection === 'open') {
             initializing.delete(uId);
