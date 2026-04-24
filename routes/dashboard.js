@@ -14,8 +14,8 @@ router.get('/stats', authenticateToken, async (req, res) => {
     // Fetch subscription status
     const [subs] = await db.execute('SELECT plan_name, status, expiry_date FROM subscriptions WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
     
-    // Fetch WhatsApp status
-    const [wa] = await db.execute('SELECT status FROM whatsapp_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
+    // Fetch WhatsApp status (using session_key since id column was removed)
+    const [wa] = await db.execute("SELECT status FROM whatsapp_sessions WHERE user_id = ? AND session_key = 'status_meta' LIMIT 1", [userId]);
     
     // Fetch Message Count
     const [msgCount] = await db.execute('SELECT COUNT(*) as count FROM messages WHERE user_id = ?', [userId]);
