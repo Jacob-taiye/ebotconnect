@@ -44,7 +44,7 @@ router.post('/logout', authenticateToken, async (req, res) => {
         }
 
         // 3. Update database status
-        await db.execute('UPDATE whatsapp_sessions SET status = "disconnected" WHERE user_id = ?', [userId]);
+        await db.execute('UPDATE whatsapp_sessions SET status = \'disconnected\' WHERE user_id = ?', [userId]);
 
         res.json({ message: "Logged out successfully" });
     } catch (error) {
