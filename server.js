@@ -49,17 +49,40 @@ app.use('/api/admin', adminRoutes);
 // Auto-Database Setup for Cloud Deployment
 const initializeDatabase = async () => {
   const db = require('./config/db');
+  
+  // 1. Core Tables Setup
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, business_name VARCHAR(255), email VARCHAR(255) UNIQUE, password VARCHAR(255), phone VARCHAR(20), address TEXT, logo VARCHAR(255), status ENUM('active', 'suspended') DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS subscriptions (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, plan_name VARCHAR(100), amount DECIMAL(10, 2), status ENUM('active', 'inactive', 'expired') DEFAULT 'inactive', start_date DATETIME, expiry_date DATETIME, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS business_info (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, description TEXT, products TEXT, prices TEXT, faqs TEXT, working_hours VARCHAR(255), welcome_message TEXT, auto_reply_message TEXT, is_active BOOLEAN DEFAULT TRUE, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS whatsapp_sessions (user_id INT NOT NULL, session_key VARCHAR(255) NOT NULL, session_data LONGTEXT, status ENUM('connected', 'disconnected') DEFAULT 'disconnected', connected_at DATETIME, PRIMARY KEY (user_id, session_key), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS messages (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, customer_number VARCHAR(20), message TEXT, bot_reply TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS admins (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) UNIQUE, email VARCHAR(255) UNIQUE, password VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS platform_settings (id INT AUTO_INCREMENT PRIMARY KEY, setting_key VARCHAR(100) UNIQUE, setting_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`
   ];
+
   try {
     for (const sql of tables) { await db.execute(sql); }
+
+    // 2. Specialized Setup for whatsapp_sessions (Migration/Fix)
+    try {
+      // Check if status column exists
+      await db.execute("SELECT status FROM whatsapp_sessions LIMIT 1");
+    } catch (e) {
+      console.log('! Fixing whatsapp_sessions table structure...');
+      await db.execute("DROP TABLE IF EXISTS whatsapp_sessions");
+      await db.execute(`
+        CREATE TABLE whatsapp_sessions (
+          user_id INT NOT NULL, 
+          session_key VARCHAR(255) NOT NULL, 
+          session_data LONGTEXT, 
+          status ENUM('connected', 'disconnected') DEFAULT 'disconnected', 
+          connected_at DATETIME, 
+          PRIMARY KEY (user_id, session_key), 
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `);
+    }
+
     console.log('✓ Database tables initialized');
   } catch (err) {
     console.error('! Database initialization warning:', err.message);
@@ -75,16 +98,11 @@ const fs = require('fs');
 // Auto-initialize active WhatsApp sessions on server start
 setTimeout(async () => {
     try {
-        const [activeSessions] = await db.execute('SELECT user_id FROM whatsapp_sessions WHERE status = "connected"');
+        // Updated query to use single quotes and check session_key
+        const [activeSessions] = await db.execute("SELECT user_id FROM whatsapp_sessions WHERE status = 'connected' AND session_key = 'status_meta'");
         for (const session of activeSessions) {
-            const sessionPath = path.join(__dirname, `./sessions/user_${session.user_id}`);
-            if (session.user_id && fs.existsSync(sessionPath)) {
-                console.log(`Auto-reconnecting WhatsApp for user ${session.user_id}...`);
-                initializeWhatsApp(session.user_id, io);
-            } else {
-                // If files are missing, reset status to disconnected
-                await db.execute('UPDATE whatsapp_sessions SET status = "disconnected" WHERE user_id = ?', [session.user_id]);
-            }
+            console.log(`Auto-reconnecting WhatsApp for user ${session.user_id}...`);
+            initializeWhatsApp(session.user_id, io);
         }
     } catch (err) {
         console.error('Error auto-initializing sessions:', err);
