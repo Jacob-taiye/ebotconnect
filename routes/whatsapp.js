@@ -10,7 +10,15 @@ const db = require('../config/db');
 router.post('/start', authenticateToken, async (req, res) => {
     try {
         const io = req.app.get('socketio');
-        await initializeWhatsApp(req.user.userId, io);
+        const userId = parseInt(req.user.userId);
+        
+        // Remove from initializing set if stuck
+        const { sessions, initializeWhatsApp } = require('../services/whatsapp');
+        // This is a bit hacky but helps clear stuck states
+        const initializing = req.app.get('initializing_set'); 
+        if (initializing) initializing.delete(userId);
+
+        await initializeWhatsApp(userId, io);
         res.json({ message: "WhatsApp engine started" });
     } catch (error) {
         console.error(error);
@@ -43,10 +51,10 @@ router.post('/logout', authenticateToken, async (req, res) => {
             console.log(`Cleared session files for user ${userId}`);
         }
 
-        // 3. Update database status
-        await db.execute('UPDATE whatsapp_sessions SET status = \'disconnected\' WHERE user_id = ?', [userId]);
+        // 3. Update database: Completely wipe session data to force fresh QR
+        await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [userId]);
 
-        res.json({ message: "Logged out successfully" });
+        res.json({ message: "WhatsApp session wiped successfully" });
     } catch (error) {
         console.error("Logout Error:", error);
         res.status(500).json({ message: "Logout failed" });
