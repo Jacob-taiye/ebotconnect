@@ -98,16 +98,21 @@ const fs = require('fs');
 // Auto-initialize active WhatsApp sessions on server start
 setTimeout(async () => {
     try {
-        // Updated query to use single quotes and check session_key
-        const [activeSessions] = await db.execute("SELECT user_id FROM whatsapp_sessions WHERE status = 'connected' AND session_key = 'status_meta'");
+        const { initializeWhatsApp, sessions } = require('./services/whatsapp');
+        // Only get users who were 'connected'
+        const [activeSessions] = await db.execute("SELECT DISTINCT user_id FROM whatsapp_sessions WHERE status = 'connected' AND session_key = 'status_meta'");
+        
         for (const session of activeSessions) {
-            console.log(`Auto-reconnecting WhatsApp for user ${session.user_id}...`);
-            initializeWhatsApp(session.user_id, io);
+            const uId = parseInt(session.user_id);
+            if (!sessions.has(uId)) {
+                console.log(`[AUTO-START] Reconnecting WhatsApp for user ${uId}...`);
+                await initializeWhatsApp(uId, io);
+            }
         }
     } catch (err) {
         console.error('Error auto-initializing sessions:', err);
     }
-}, 5000);
+}, 10000); // Increased to 10 seconds to ensure DB is fully ready
 
 setInterval(async () => {
   try {
