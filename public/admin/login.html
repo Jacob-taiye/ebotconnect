@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Admin Login | ebotconnect</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#00687b",
+                        "on-primary": "#ffffff",
+                        "surface": "#f5fafc",
+                        "on-surface": "#171c1e",
+                        "outline-variant": "#bcc9cd",
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-white rounded-3xl border border-outline-variant/20 shadow-xl p-10 space-y-8">
+        <div class="text-center space-y-2">
+            <div class="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-3xl">security</span>
+            </div>
+            <h1 class="text-3xl font-headline font-extrabold tracking-tight">Admin Portal</h1>
+            <p class="text-on-surface-variant font-medium">Platform Management Access</p>
+        </div>
+
+        <form id="adminLoginForm" class="space-y-6">
+            <div class="space-y-2">
+                <label class="block text-sm font-bold uppercase tracking-widest text-on-surface-variant ml-1">Admin Email</label>
+                <input type="email" id="email" required class="w-full p-4 bg-surface border-none rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="admin@ebotconnect.com">
+            </div>
+            <div class="space-y-2">
+                <label class="block text-sm font-bold uppercase tracking-widest text-on-surface-variant ml-1">Password</label>
+                <input type="password" id="password" required class="w-full p-4 bg-surface border-none rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••">
+            </div>
+            <button type="submit" class="w-full py-4 bg-primary text-on-primary font-headline font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98]">
+                Secure Login
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('adminToken', data.token);
+                    window.location.href = 'index.html';
+                } else {
+                    alert(data.message || 'Login failed');
+                }
+            } catch (err) {
+                alert('An error occurred');
+            }
+        });
+    </script>
+</body>
+</html>

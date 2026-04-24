@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Dashboard | ebotconnect</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#00687b",
+                        "primary-container": "#00a3c1",
+                        "on-primary": "#ffffff",
+                        "surface": "#f5fafc",
+                        "on-surface": "#171c1e",
+                        "surface-container": "#eaeff1",
+                        "surface-container-low": "#eff4f7",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#bcc9cd",
+                        "secondary-container": "#bde6f4",
+                        "on-secondary-container": "#416874",
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav {
+            background-color: #00687b;
+            color: white !important;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen flex">
+    <!-- Mobile Menu Button -->
+    <div class="lg:hidden fixed top-4 left-4 z-[60]">
+        <button id="menuBtn" class="p-3 bg-white border border-outline-variant/30 rounded-xl shadow-sm flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div id="overlay" class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div class="p-8 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-primary rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+                </div>
+                <span class="font-headline font-extrabold tracking-tighter text-2xl text-primary">ebotconnect</span>
+            </div>
+            <!-- Close button (Mobile Only) -->
+            <button id="closeMenuBtn" class="lg:hidden text-on-surface-variant">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        
+        <nav class="flex-grow px-4 space-y-2">
+            <a href="dashboard.html" class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-semibold">
+                <span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+            <a href="profile.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">business_center</span>
+                Business Profile
+            </a>
+            <a href="connect.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">chat_bubble</span>
+                WhatsApp Bot
+            </a>
+            <a href="pricing.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">payments</span>
+                Subscription
+            </a>
+            <a href="messages.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">history</span>
+                Message Logs
+            </a>
+        </nav>
+
+        <div class="p-6 border-t border-outline-variant/20">
+            <button id="logoutBtn" class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-error hover:bg-error-container/10 transition-all font-semibold">
+                <span class="material-symbols-outlined">logout</span>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-grow lg:ml-72 p-6 lg:p-10">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10 pt-12 lg:pt-0">
+            <div>
+                <h1 class="text-3xl lg:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-2">Welcome back, <span id="bizName" class="text-primary">User</span>!</h1>
+                <p id="currentTime" class="text-on-surface-variant font-medium"></p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                    <span class="material-symbols-outlined text-primary">person</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <!-- Subscription Card -->
+            <div class="bg-white p-6 rounded-2xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-secondary-container text-on-secondary-container rounded-xl">
+                        <span class="material-symbols-outlined">verified</span>
+                    </div>
+                </div>
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">Subscription Status</p>
+                <h3 id="subStatus" class="text-2xl font-black text-on-surface mb-2">Loading...</h3>
+                <p id="subPlan" class="text-xs font-semibold text-primary uppercase"></p>
+            </div>
+
+            <!-- WhatsApp Status -->
+            <div class="bg-white p-6 rounded-2xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-4">
+                    <div id="waIconBg" class="p-3 bg-surface-container rounded-xl">
+                        <span class="material-symbols-outlined">settings_phone</span>
+                    </div>
+                    <div id="waIndicator" class="w-3 h-3 rounded-full bg-outline"></div>
+                </div>
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">WhatsApp Status</p>
+                <h3 id="waStatus" class="text-2xl font-black text-on-surface">Checking...</h3>
+            </div>
+
+            <!-- Messages Count -->
+            <div class="bg-white p-6 rounded-2xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-primary/5 text-primary rounded-xl">
+                        <span class="material-symbols-outlined">chat</span>
+                    </div>
+                </div>
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">Messages Replied</p>
+                <h3 id="msgCount" class="text-3xl font-black text-on-surface">0</h3>
+            </div>
+
+            <!-- Bot Toggle -->
+            <div class="bg-white p-6 rounded-2xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-primary/5 text-primary rounded-xl">
+                        <span class="material-symbols-outlined">smart_toy</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="botToggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">Bot Status</p>
+                <h3 id="botStatusText" class="text-2xl font-black text-on-surface">Inactive</h3>
+            </div>
+        </div>
+
+        <!-- Recent Activity Section -->
+        <div class="bg-white rounded-3xl border border-outline-variant/20 shadow-sm overflow-hidden">
+            <div class="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low/30">
+                <h2 class="text-xl font-headline font-bold text-on-surface">Recent Bot Activity</h2>
+                <button class="text-primary font-bold text-sm hover:underline">View All Logs</button>
+            </div>
+            <div id="activityPlaceholder" class="p-16 flex flex-col items-center justify-center text-center">
+                <div class="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center mb-6">
+                    <span class="material-symbols-outlined text-outline text-4xl">inbox</span>
+                </div>
+                <p class="text-on-surface-variant font-medium text-lg">No recent messages to display.</p>
+                <p class="text-outline text-sm mt-2">Activity will appear here once your bot starts responding.</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Update Time
+            const updateTime = () => {
+                const now = new Date();
+                document.getElementById('currentTime').textContent = now.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+            updateTime();
+            setInterval(updateTime, 1000 * 60);
+
+            // Fetch Dashboard Data
+            try {
+                const response = await fetch('/api/dashboard/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('bizName').textContent = data.businessName;
+                    document.getElementById('subStatus').textContent = data.subscription.status;
+                    
+                    const subPlan = document.getElementById('subPlan');
+                    subPlan.textContent = `${data.subscription.plan} Plan`;
+                    
+                    const waStatus = document.getElementById('waStatus');
+                    const waIndicator = document.getElementById('waIndicator');
+                    const waIconBg = document.getElementById('waIconBg');
+                    
+                    waStatus.textContent = data.whatsapp.status.charAt(0).toUpperCase() + data.whatsapp.status.slice(1);
+                    
+                    if (data.whatsapp.status === 'connected') {
+                        waIndicator.className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                        waIconBg.className = 'p-3 bg-green-50 text-green-600 rounded-xl';
+                    } else {
+                        waIndicator.className = 'w-3 h-3 rounded-full bg-red-400';
+                        waIconBg.className = 'p-3 bg-red-50 text-red-600 rounded-xl';
+                    }
+                    
+                    document.getElementById('msgCount').textContent = data.messageCount.toLocaleString();
+                    const botToggle = document.getElementById('botToggle');
+                    botToggle.checked = data.botActive;
+                    document.getElementById('botStatusText').textContent = data.botActive ? 'Active' : 'Inactive';
+
+                    // Update Recent Activity
+                    const activityContainer = document.getElementById('activityPlaceholder');
+                    if (data.recentActivity && data.recentActivity.length > 0) {
+                        activityContainer.className = "divide-y divide-outline-variant/10";
+                        activityContainer.innerHTML = data.recentActivity.map(act => `
+                            <div class="p-6 hover:bg-surface-container-low transition-all flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-primary/5 text-primary flex items-center justify-center font-bold text-xs">
+                                        ${act.customer_number.slice(-2)}
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-on-surface text-sm">${act.customer_number}</p>
+                                        <p class="text-on-surface-variant text-xs line-clamp-1">${act.message}</p>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-bold text-outline uppercase">${new Date(act.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching stats:', err);
+            }
+
+            // Logout Logic
+            document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = 'login.html';
+            });
+
+            // Bot Toggle Logic
+            document.getElementById('botToggle').addEventListener('change', async (e) => {
+                const active = e.target.checked;
+                document.getElementById('botStatusText').textContent = active ? 'Active' : 'Inactive';
+                try {
+                    await fetch('/api/dashboard/toggle-bot', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` 
+                        },
+                        body: JSON.stringify({ active })
+                    });
+                } catch (err) {
+                    console.error('Error toggling bot:', err);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

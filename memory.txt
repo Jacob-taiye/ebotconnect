@@ -1,0 +1,38 @@
+# EbotConnect - Project Progress Summary (Updated April 22, 2026)
+
+## Project Overview
+EbotConnect is a SaaS platform enabling businesses to deploy AI-powered WhatsApp chatbots using Node.js, Express, MySQL, Baileys, and Groq (Llama 3).
+
+## Recent Updates & Fixes:
+
+### 1. Advanced Bot Logic (2-Minute Delay & Human Override)
+- **Smart Delay**: Implemented a 2-minute delay for the *first message* in a conversation. If the business owner replies manually within this window, the bot's scheduled response is cancelled.
+- **Immediate Follow-ups**: After the first message, subsequent AI replies are immediate to maintain conversation flow, resetting after 30 minutes of inactivity.
+- **Conversation State**: Added a database-driven check to distinguish between new and ongoing conversations.
+
+### 2. Bot Toggle Stability & Schema Fix
+- **Toggle Enforcement**: Fixed a bug where the bot would ignore the "Off" toggle. The `is_active` check is now the very first step in the message handler.
+- **Database Integrity**: Updated the `toggle-bot` route to robustly handle record creation/updates. Added `ORDER BY id DESC` to all business info queries to ensure the most recent settings are always applied.
+- **Sanitization**: Implemented logic to prevent the bot from replying with "null" if database fields (like `welcome_message`) are empty. Added professional fallback strings.
+
+### 3. AI Prompt & Engine Refinement
+- **Context-Aware Prompting**: Enhanced the Groq system prompt to strictly use business-specific details (Description, Products, FAQs, etc.).
+- **Response Safety**: Added a final "null-check" on AI outputs to ensure every customer interaction receives a valid, professional response.
+
+### 4. Dashboard & UI Enhancements
+- **Live Activity Feed**: Replaced the dashboard's "Recent Activity" placeholder with a real-time feed of the latest 5 bot interactions.
+- **Dynamic Pricing**: Fully linked the payment system to the `platform_settings` table. Changing prices in the Admin Panel now automatically updates the Flutterwave checkout logic.
+
+### 5. Technical Maintenance
+- **Baileys Downgrade**: Reverted `@whiskeysockets/baileys` to version `6.6.0` (Stable) to resolve "Connection Failure" issues seen in newer release candidates.
+- **Cleanup**: Removed obsolete Gemini-related test files (`test_gemini.js`, `list_models.js`).
+
+## Current Status:
+- **AI Brain**: Fast, context-aware, and stable using Groq Llama 3.3.
+- **Admin Control**: Fully dynamic (Pricing, API Keys, Business Status).
+- **UX**: Polished dashboard with live logs and smart bot-takeover logic.
+
+## Technical Configuration:
+- **Groq Primary**: `llama-3.3-70b-versatile`.
+- **Delay Window**: 120,000ms (2 minutes).
+- **Session ID**: isolation by `user_id`.
