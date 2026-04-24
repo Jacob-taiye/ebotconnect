@@ -157,7 +157,7 @@ async function initializeWhatsApp(userId, io) {
             if (!isFatal) {
                 setTimeout(() => initializeWhatsApp(uId, io), 5000);
             } else {
-                await db.execute('UPDATE whatsapp_sessions SET status = "disconnected" WHERE user_id = ? AND session_key = "status_meta"', [uId]);
+                await db.execute('UPDATE whatsapp_sessions SET status = \'disconnected\' WHERE user_id = ? AND session_key = \'status_meta\'', [uId]);
                 io.to(`user_${uId}`).emit('status', 'disconnected');
             }
         } else if (connection === 'open') {
@@ -166,7 +166,7 @@ async function initializeWhatsApp(userId, io) {
             
             // Meta entry to track connection status
             await db.execute(
-                'INSERT INTO whatsapp_sessions (user_id, session_key, status, connected_at) VALUES (?, "status_meta", "connected", NOW()) ON DUPLICATE KEY UPDATE status="connected", connected_at=NOW()',
+                'INSERT INTO whatsapp_sessions (user_id, session_key, status, connected_at) VALUES (?, \'status_meta\', \'connected\', NOW()) ON DUPLICATE KEY UPDATE status=\'connected\', connected_at=NOW()',
                 [uId]
             );
             io.to(`user_${uId}`).emit('status', 'connected');
@@ -218,7 +218,7 @@ async function initializeWhatsApp(userId, io) {
                 if (!body) return;
 
                 const [subs] = await db.execute(
-                    'SELECT status FROM subscriptions WHERE user_id = ? AND status = "active" AND expiry_date > NOW()',
+                    'SELECT status FROM subscriptions WHERE user_id = ? AND status = \'active\' AND expiry_date > NOW()',
                     [uId]
                 );
                 if (!subs || subs.length === 0) return;
