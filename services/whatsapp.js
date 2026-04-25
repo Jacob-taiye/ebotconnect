@@ -15,6 +15,7 @@ const pino = require('pino');
 const sessions = new Map();
 const initializing = new Set();
 const pendingBots = new Map();
+const retryCount = new Map(); // Track retries per user
 
 /**
  * Custom Auth State for MySQL
@@ -114,151 +115,183 @@ async function initializeWhatsApp(userId, io) {
     initializing.add(uId);
     console.log(`[SESSION] Initializing (Database Mode) for user ${uId}...`);
 
-    // Use Database instead of File System
-    const { state, saveCreds } = await useDatabaseAuthState(uId);
-    
-    let version = [2, 3000, 1017531202];
     try {
-        const { version: latestVersion } = await fetchLatestBaileysVersion();
-        version = latestVersion;
-    } catch (e) {}
+        const { state, saveCreds } = await useDatabaseAuthState(uId);
+        const version = [2, 3000, 1017531202];
 
-    const sock = makeWASocket({
-        version,
-        auth: state,
-        printQRInTerminal: false,
-        logger: pino({ level: 'silent' }),
-        browser: ['ebotconnect', 'Chrome', '1.0.0'],
-        connectTimeoutMs: 60000,
-    });
+        const sock = makeWASocket({
+            version,
+            auth: state,
+            printQRInTerminal: false,
+            logger: pino({ level: 'silent' }),
+            browser: ['EbotConnect', 'Chrome', '110.0.0'],
+            connectTimeoutMs: 90000,
+            keepAliveIntervalMs: 30000,
+        });
 
-    sessions.set(uId, sock);
+        sessions.set(uId, sock);
 
-    sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        sock.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
-            const qrDataUrl = await qrcode.toDataURL(qr);
-            io.to(`user_${uId}`).emit('qr', qrDataUrl);
-            // Ensure we clear initializing state so user can try again if they miss it
-            initializing.delete(uId);
-        }
-
-        if (connection === 'close') {
-            initializing.delete(uId);
-            const error = lastDisconnect?.error;
-            const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
-            
-            console.log(`[SESSION] Closed for user ${uId}. Reason: ${statusCode}`);
-            
-            const isFatal = [
-                DisconnectReason.loggedOut,
-                401, 409
-            ].includes(statusCode);
-            
-            sessions.delete(uId);
-
-            if (!isFatal) {
-                // Only retry if not fatal, and wait 10 seconds
-                console.log(`[SESSION] Retrying connection for user ${uId} in 10s...`);
-                setTimeout(() => initializeWhatsApp(uId, io), 10000);
-            } else {
-                await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
-                io.to(`user_${uId}`).emit('status', 'disconnected');
-                io.to(`user_${uId}`).emit('error', 'Session logged out or expired. Please scan again.');
+            if (qr) {
+                console.log(`[SESSION] QR Generated for user ${uId}`);
+                const qrDataUrl = await qrcode.toDataURL(qr);
+                io.to(`user_${uId}`).emit('qr', qrDataUrl);
+                initializing.delete(uId);
+                retryCount.set(uId, 0); // Reset retry on QR
             }
-        } else if (connection === 'open') {
-            initializing.delete(uId);
-            console.log(`[SESSION] Connected for user ${uId}`);
-            
-            // Meta entry to track connection status
-            await db.execute(
-                'INSERT INTO whatsapp_sessions (user_id, session_key, status, connected_at) VALUES (?, \'status_meta\', \'connected\', NOW()) ON DUPLICATE KEY UPDATE status=\'connected\', connected_at=NOW()',
-                [uId]
-            );
-            io.to(`user_${uId}`).emit('status', 'connected');
-        }
-    });
 
-    sock.ev.on('messages.upsert', async (m) => {
-        if (m.type !== 'notify') return;
-        const msg = m.messages[0];
-        if (!msg.message) return;
-        const remoteJid = msg.key.remoteJid;
-        if (remoteJid.endsWith('@g.us')) return;
+            if (connection === 'close') {
+                initializing.delete(uId);
+                const error = lastDisconnect?.error;
+                const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
+                
+                console.log(`[SESSION] Closed for user ${uId}. Reason: ${statusCode}`);
+                sessions.delete(uId);
 
-        const [bizInfo] = await db.execute(`
-            SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
-            FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
-            ORDER BY b.id DESC LIMIT 1`,
-            [uId]
-        );
-        
-        if (!bizInfo || bizInfo.length === 0 || bizInfo[0].is_active !== 1) return;
-        const biz = bizInfo[0];
-        const pendingKey = `${uId}:${remoteJid}`;
-
-        if (msg.key.fromMe) {
-            if (pendingBots.has(pendingKey)) {
-                clearTimeout(pendingBots.get(pendingKey));
-                pendingBots.delete(pendingKey);
-            }
-            return;
-        }
-
-        const [recentLogs] = await db.execute(
-            'SELECT id FROM messages WHERE user_id = ? AND customer_number = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1',
-            [uId, remoteJid.split('@')[0]]
-        );
-
-        const isFirstMessage = recentLogs.length === 0;
-
-        const executeBotReply = async () => {
-            try {
-                if (!sessions.has(uId)) return;
-                let body = "";
-                if (msg.message.conversation) body = msg.message.conversation;
-                else if (msg.message.extendedTextMessage) body = msg.message.extendedTextMessage.text;
-                else if (msg.message.imageMessage && msg.message.imageMessage.caption) body = msg.message.imageMessage.caption;
-                else if (msg.message.videoMessage && msg.message.videoMessage.caption) body = msg.message.videoMessage.caption;
-
-                if (!body) return;
-
-                const [subs] = await db.execute(
-                    'SELECT status FROM subscriptions WHERE user_id = ? AND status = \'active\' AND expiry_date > NOW()',
+                const isFatal = [DisconnectReason.loggedOut, 401, 403, 409, 411].includes(statusCode);
+                
+                if (!isFatal) {
+                    let currentRetries = retryCount.get(uId) || 0;
+                    if (currentRetries >= 5) {
+                        console.log(`[SESSION] Max retries reached for user ${uId}. Wiping session.`);
+                        await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
+                        retryCount.delete(uId);
+                        io.to(`user_${uId}`).emit('status', 'disconnected');
+                        return;
+                    }
+                    
+                    retryCount.set(uId, currentRetries + 1);
+                    const retryDelay = statusCode === 'Connection Failure' ? 15000 : 5000;
+                    console.log(`[SESSION] Retry ${currentRetries + 1}/5 for user ${uId} in ${retryDelay/1000}s...`);
+                    setTimeout(() => initializeWhatsApp(uId, io), retryDelay);
+                } else {
+                    console.log(`[SESSION] Fatal error for user ${uId}. Wiping session.`);
+                    await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
+                    io.to(`user_${uId}`).emit('status', 'disconnected');
+                }
+            } else if (connection === 'open') {
+                initializing.delete(uId);
+                retryCount.set(uId, 0); // Reset retry on success
+                console.log(`[SESSION] Connected successfully for user ${uId}`);
+                
+                await db.execute(
+                    'INSERT INTO whatsapp_sessions (user_id, session_key, status, connected_at) VALUES (?, \'status_meta\', \'connected\', NOW()) ON DUPLICATE KEY UPDATE status=\'connected\', connected_at=NOW()',
                     [uId]
                 );
-                if (!subs || subs.length === 0) return;
+                io.to(`user_${uId}`).emit('status', 'connected');
+            }
+        });
 
-                const replyText = await generateAIReply(body, biz);
-                await sock.sendPresenceUpdate('composing', remoteJid);
-                setTimeout(async () => {
-                    try {
-                        await sock.sendMessage(remoteJid, { text: replyText });
-                        await db.execute(
-                            'INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
-                            [uId, remoteJid.split('@')[0], body, replyText]
-                        );
-                    } catch (err) {}
-                }, 2000);
-            } catch (err) {}
-        };
+        sock.ev.on('messages.upsert', async (m) => {
+            if (m.type !== 'notify') return;
+            const msg = m.messages[0];
+            if (!msg.message || msg.key.fromMe) return;
 
-        if (isFirstMessage) {
-            if (pendingBots.has(pendingKey)) clearTimeout(pendingBots.get(pendingKey));
-            const timeoutId = setTimeout(() => {
-                pendingBots.delete(pendingKey);
+            const remoteJid = msg.key.remoteJid;
+            if (remoteJid.endsWith('@g.us')) return;
+
+            console.log(`[BOT] New message from ${remoteJid} for user ${uId}`);
+
+            const [bizInfo] = await db.execute(`
+                SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
+                FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
+                ORDER BY b.id DESC LIMIT 1`,
+                [uId]
+            );
+            
+            if (!bizInfo || bizInfo.length === 0) {
+                console.log(`[BOT] No business info found for user ${uId}`);
+                return;
+            }
+            if (bizInfo[0].is_active !== 1) {
+                console.log(`[BOT] Bot is inactive for user ${uId}`);
+                return;
+            }
+
+            const biz = bizInfo[0];
+            const pendingKey = `${uId}:${remoteJid}`;
+
+            const [recentLogs] = await db.execute(
+                'SELECT id FROM messages WHERE user_id = ? AND customer_number = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1',
+                [uId, remoteJid.split('@')[0]]
+            );
+
+            const isFirstMessage = recentLogs.length === 0;
+
+            const executeBotReply = async () => {
+                try {
+                    console.log(`[BOT] Processing reply for ${remoteJid}...`);
+                    
+                    let body = "";
+                    if (msg.message.conversation) body = msg.message.conversation;
+                    else if (msg.message.extendedTextMessage) body = msg.message.extendedTextMessage.text;
+                    else if (msg.message.imageMessage && msg.message.imageMessage.caption) body = msg.message.imageMessage.caption;
+                    else if (msg.message.videoMessage && msg.message.videoMessage.caption) body = msg.message.videoMessage.caption;
+
+                    if (!body) {
+                        console.log(`[BOT] Empty message body, skipping.`);
+                        return;
+                    }
+
+                    const [subs] = await db.execute(
+                        'SELECT status, expiry_date FROM subscriptions WHERE user_id = ? AND status = \'active\' AND expiry_date > NOW()',
+                        [uId]
+                    );
+
+                    if (!subs || subs.length === 0) {
+                        console.log(`[BOT] User ${uId} has no active subscription.`);
+                        return;
+                    }
+
+                    console.log(`[BOT] Generating AI reply for: "${body}"`);
+                    const replyText = await generateAIReply(body, biz);
+                    
+                    if (!replyText) {
+                        console.log(`[BOT] AI failed to generate reply.`);
+                        return;
+                    }
+
+                    await sock.sendPresenceUpdate('composing', remoteJid);
+                    setTimeout(async () => {
+                        try {
+                            await sock.sendMessage(remoteJid, { text: replyText });
+                            await db.execute(
+                                'INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
+                                [uId, remoteJid.split('@')[0], body, replyText]
+                            );
+                            console.log(`[BOT] Reply sent to ${remoteJid}`);
+                        } catch (err) {
+                            console.error(`[BOT] Send Error:`, err.message);
+                        }
+                    }, 2000);
+                } catch (err) {
+                    console.error(`[BOT] General Error:`, err.message);
+                }
+            };
+
+            if (isFirstMessage) {
+                console.log(`[BOT] First message detected. Waiting 2 minutes...`);
+                if (pendingBots.has(pendingKey)) clearTimeout(pendingBots.get(pendingKey));
+                const timeoutId = setTimeout(() => {
+                    pendingBots.delete(pendingKey);
+                    executeBotReply();
+                }, 120000); 
+                pendingBots.set(pendingKey, timeoutId);
+            } else {
                 executeBotReply();
-            }, 120000); 
-            pendingBots.set(pendingKey, timeoutId);
-        } else {
-            executeBotReply();
-        }
-    });
+            }
+        });
 
-    return sock;
+    } catch (err) {
+        console.error(`[SESSION] Init Error for user ${uId}:`, err.message);
+        initializing.delete(uId);
+    }
+
+    return sessions.get(uId);
 }
 
 async function generateAIReply(customerMessage, bizInfo) {
