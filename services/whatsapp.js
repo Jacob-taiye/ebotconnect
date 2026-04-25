@@ -151,10 +151,22 @@ async function initializeWhatsApp(userId, io) {
         sock.ev.on('messages.upsert', async (m) => {
             if (m.type !== 'notify') return;
             const msg = m.messages[0];
-            if (!msg.message || msg.key.fromMe) return;
+            if (!msg.message) return;
 
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.endsWith('@g.us')) return;
+
+            const pendingKey = `${uId}:${remoteJid}`;
+
+            // --- Human Override Logic ---
+            if (msg.key.fromMe) {
+                if (pendingBots.has(pendingKey)) {
+                    console.log(`[BOT] Manual reply detected for ${remoteJid}. Cancelling AI response.`);
+                    clearTimeout(pendingBots.get(pendingKey));
+                    pendingBots.delete(pendingKey);
+                }
+                return;
+            }
 
             const body = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || "";
             if (!body) return;
@@ -247,20 +259,26 @@ async function generateAIReply(customerMessage, bizInfo) {
             messages: [
                 { 
                     role: "system", 
-                    content: `You are a helpful, concise assistant for ${bizInfo.business_name}. 
-                    Context: ${bizInfo.description}. 
-                    Products: ${bizInfo.products}. 
-                    FAQs: ${bizInfo.faqs}.
-                    
-                    RULES:
-                    1. Answer only what the user asks. 
-                    2. Keep replies short (1-3 sentences).
-                    3. Be friendly and conversational, not a corporate robot.
-                    4. Do not list all products or the whole description unless asked.` 
+                    content: `You are the official customer assistant for "${bizInfo.business_name}".
+
+STRICT BUSINESS CONTEXT:
+- Description: ${bizInfo.description || 'N/A'}
+- Products/Services: ${bizInfo.products || 'N/A'}
+- Prices/Pricing: ${bizInfo.prices || 'N/A'}
+- FAQs: ${bizInfo.faqs || 'N/A'}
+
+STRICT RULES:
+1. ONLY use the information provided in the "STRICT BUSINESS CONTEXT" above.
+2. If a user asks something NOT covered by the context, politely say you don't have that information and ask them to contact the business directly.
+3. Do NOT make up products, prices, or details.
+4. Keep replies extremely concise (1-2 sentences).
+5. Be professional and friendly.
+6. NEVER mention you are an AI, a bot, or an assistant. Speak as an employee.
+7. If the user just says "Hi" or "Hello", use this welcome message: ${bizInfo.welcome_message || 'Hello! How can we help you today?'}` 
                 },
                 { role: "user", content: customerMessage }
             ],
-            temperature: 0.7
+            temperature: 0.1
         }, { headers: { 'Authorization': `Bearer ${apiKey}` }, timeout: 15000 });
 
         return response.data.choices[0].message.content.trim();
