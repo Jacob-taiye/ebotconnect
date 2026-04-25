@@ -154,7 +154,7 @@ async function initializeWhatsApp(userId, io) {
             if (!msg.message) return;
 
             const remoteJid = msg.key.remoteJid;
-            if (remoteJid.endsWith('@g.us')) return;
+            if (remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return;
 
             const pendingKey = `${uId}:${remoteJid}`;
 
