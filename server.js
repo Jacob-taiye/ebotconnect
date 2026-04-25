@@ -93,6 +93,18 @@ const initializeDatabase = async () => {
     }
 
     console.log('✓ Database tables initialized');
+
+    // 3. Auto-Seed Default Admin
+    const [existingAdmin] = await db.execute("SELECT id FROM admins LIMIT 1");
+    if (existingAdmin.length === 0) {
+      const bcrypt = require('bcryptjs');
+      const hashedPw = await bcrypt.hash('admin123', 10);
+      await db.execute(
+        "INSERT INTO admins (username, email, password) VALUES ('admin', 'admin@ebotconnect.com', ?)",
+        [hashedPw]
+      );
+      console.log('✓ Default admin seeded (admin@ebotconnect.com / admin123)');
+    }
   } catch (err) {
     console.error('! Database initialization warning:', err.message);
   }
@@ -154,7 +166,11 @@ server.listen(PORT, () => {
 });
 
 // Catch-all route to serve index.html for any non-API requests
-app.use((req, res) => {
+app.get('*', (req, res) => {
+  // If the request is for an API or has an extension (like .js, .css), don't serve index.html
+  if (req.path.startsWith('/api/') || req.path.includes('.')) {
+    return res.status(404).json({ message: "Not found" });
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
