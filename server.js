@@ -164,7 +164,7 @@ server.listen(PORT, () => {
 });
 
 // Catch-all route to serve index.html for any non-API requests
-app.get('(.*)', (req, res) => {
+app.use((req, res) => {
   // If the request is for an API or has an extension (like .js, .css), don't serve index.html
   if (req.path.startsWith('/api/') || req.path.includes('.')) {
     return res.status(404).json({ message: "Not found" });
