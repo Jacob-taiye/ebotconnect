@@ -95,16 +95,14 @@ const initializeDatabase = async () => {
     console.log('✓ Database tables initialized');
 
     // 3. Auto-Seed Default Admin
-    const [existingAdmin] = await db.execute("SELECT id FROM admins LIMIT 1");
-    if (existingAdmin.length === 0) {
-      const bcrypt = require('bcryptjs');
-      const hashedPw = await bcrypt.hash('admin123', 10);
-      await db.execute(
-        "INSERT INTO admins (username, email, password) VALUES ('admin', 'admin@ebotconnect.com', ?)",
-        [hashedPw]
-      );
-      console.log('✓ Default admin seeded (admin@ebotconnect.com / admin123)');
-    }
+    const bcrypt = require('bcryptjs');
+    const hashedPw = await bcrypt.hash('admin123', 10);
+    await db.execute(
+      "INSERT INTO admins (username, email, password) VALUES ('admin', 'admin@ebotconnect.com', ?) " +
+      "ON DUPLICATE KEY UPDATE password = ?, email = 'admin@ebotconnect.com'",
+      [hashedPw, hashedPw]
+    );
+    console.log('✓ Default admin ensured (admin@ebotconnect.com / admin123)');
   } catch (err) {
     console.error('! Database initialization warning:', err.message);
   }
