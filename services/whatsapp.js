@@ -78,24 +78,23 @@ async function initializeWhatsApp(userId, io) {
     if (initializing.has(uId)) return;
 
     initializing.add(uId);
-    console.log(`[SESSION] Attempting connection for user ${uId}...`);
+    console.log(`[SESSION] Cloud-Init for user ${uId}...`);
 
     try {
         const { state, saveCreds } = await useDatabaseAuthState(uId);
-        
-        // Very stable hardcoded version
-        const version = [2, 2413, 1]; 
+        const version = [2, 3000, 1015901307]; // Stable Baileys version
 
         const sock = makeWASocket({
             version,
             auth: state,
             printQRInTerminal: false,
             logger: pino({ level: 'silent' }),
-            browser: ['Ubuntu', 'Chrome', '110.0.5481.177'],
-            connectTimeoutMs: 120000, // 2 minutes
-            defaultQueryTimeoutMs: 60000,
-            retryRequestDelayMs: 5000,
-            keepAliveIntervalMs: 10000,
+            browser: ['Windows', 'Chrome', '11.0.0'],
+            connectTimeoutMs: 120000,
+            keepAliveIntervalMs: 30000,
+            markOnline: false,
+            syncFullHistory: false, // CRITICAL FOR RENDER/CLOUD
+            shouldSyncHistoryMessage: () => false, // DO NOT sync history
         });
 
         sessions.set(uId, sock);
@@ -105,17 +104,17 @@ async function initializeWhatsApp(userId, io) {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log(`[SESSION] New QR generated for user ${uId}`);
+                console.log(`[SESSION] QR Ready for user ${uId}`);
                 const qrDataUrl = await qrcode.toDataURL(qr);
                 io.to(`user_${uId}`).emit('qr', qrDataUrl);
-                initializing.delete(uId); // Allow fresh requests
+                initializing.delete(uId);
             }
 
             if (connection === 'close') {
                 initializing.delete(uId);
                 const error = lastDisconnect?.error;
                 const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
-                console.log(`[SESSION] Connection closed for user ${uId}: ${statusCode}`);
+                console.log(`[SESSION] Disconnected user ${uId}: ${statusCode}`);
                 sessions.delete(uId);
 
                 const isFatal = [DisconnectReason.loggedOut, 401, 403].includes(statusCode);
@@ -126,9 +125,10 @@ async function initializeWhatsApp(userId, io) {
                     const currentRetries = retryCount.get(uId) || 0;
                     if (currentRetries < 3) {
                         retryCount.set(uId, currentRetries + 1);
+                        console.log(`[SESSION] Retrying ${uId} (${currentRetries + 1}/3)...`);
                         setTimeout(() => initializeWhatsApp(uId, io), 10000);
                     } else {
-                        console.log(`[SESSION] Connection failed after 3 attempts. Wiping.`);
+                        console.log(`[SESSION] Giving up on ${uId}. Wiping session.`);
                         await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
                         retryCount.delete(uId);
                         io.to(`user_${uId}`).emit('status', 'disconnected');
@@ -137,7 +137,7 @@ async function initializeWhatsApp(userId, io) {
             } else if (connection === 'open') {
                 initializing.delete(uId);
                 retryCount.delete(uId);
-                console.log(`[SESSION] User ${uId} is now ONLINE`);
+                console.log(`[SESSION] user ${uId} is ONLINE`);
                 await db.execute(
                     'INSERT INTO whatsapp_sessions (user_id, session_key, status, connected_at) VALUES (?, \'status_meta\', \'connected\', NOW()) ON DUPLICATE KEY UPDATE status=\'connected\', connected_at=NOW()',
                     [uId]
@@ -152,6 +152,8 @@ async function initializeWhatsApp(userId, io) {
             if (!msg.message || msg.key.fromMe) return;
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.endsWith('@g.us')) return;
+
+            console.log(`[BOT] Incoming message from ${remoteJid}`);
 
             const [bizInfo] = await db.execute(`
                 SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
@@ -175,8 +177,7 @@ async function initializeWhatsApp(userId, io) {
                     if (!subs || subs.length === 0) return;
 
                     const replyText = await generateAIReply(body, biz);
-                    if (!replyText) return;
-
+                    
                     await sock.sendPresenceUpdate('composing', remoteJid);
                     setTimeout(async () => {
                         await sock.sendMessage(remoteJid, { text: replyText });
@@ -205,15 +206,20 @@ async function initializeWhatsApp(userId, io) {
 async function generateAIReply(customerMessage, bizInfo) {
     try {
         const apiKey = process.env.GROQ_API_KEY?.trim();
-        if (!apiKey) return bizInfo.auto_reply_message || "Service offline.";
+        if (!apiKey) {
+            console.log('[AI WARNING] GROQ_API_KEY is missing from environment variables!');
+            return bizInfo.auto_reply_message || "Service offline.";
+        }
+        
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [
-                { role: "system", content: `You are ${bizInfo.business_name}. Context: ${bizInfo.description}. Products: ${bizInfo.products}. FAQs: ${bizInfo.faqs}.` },
+                { role: "system", content: `You are ${bizInfo.business_name}. ${bizInfo.description}. Products: ${bizInfo.products}. FAQs: ${bizInfo.faqs}.` },
                 { role: "user", content: customerMessage }
             ],
             temperature: 0.7
         }, { headers: { 'Authorization': `Bearer ${apiKey}` }, timeout: 15000 });
+        
         return response.data.choices[0].message.content.trim();
     } catch (error) { 
         console.error('[AI ERROR]', error.response?.data || error.message);
