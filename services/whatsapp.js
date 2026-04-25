@@ -125,7 +125,10 @@ async function initializeWhatsApp(userId, io) {
                 const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
                 console.log(`[ENGINE] Closed for ${uId}: ${statusCode}`);
                 
-                sessions.delete(uId);
+                // Clear from sessions map immediately on close
+                if (sessions.get(uId) === sock) {
+                    sessions.delete(uId);
+                }
 
                 if (statusCode === 'Connection Failure' || statusCode === 401 || statusCode === 403) {
                     console.log(`[ENGINE] Cleaning up bad session for ${uId}...`);
@@ -134,7 +137,9 @@ async function initializeWhatsApp(userId, io) {
                     return;
                 }
 
-                setTimeout(() => initializeWhatsApp(uId, io), 5000);
+                // If conflict, wait longer before retrying to let the other instance die (Render deploy)
+                const delay = statusCode === 'Stream Errored (conflict)' ? 10000 : 5000;
+                setTimeout(() => initializeWhatsApp(uId, io), delay);
             } 
             
             else if (connection === 'open') {
@@ -208,12 +213,25 @@ async function initializeWhatsApp(userId, io) {
                         return;
                     }
 
-                    await sock.sendPresenceUpdate('composing', remoteJid);
+                    // CRITICAL: Always use the LATEST socket from the sessions map
+                    const currentSock = sessions.get(uId);
+                    if (!currentSock) {
+                        console.log(`[BOT] Lost connection for ${uId} during AI call. Aborting reply.`);
+                        return;
+                    }
+
+                    await currentSock.sendPresenceUpdate('composing', remoteJid);
                     setTimeout(async () => {
-                        await sock.sendMessage(remoteJid, { text: replyText });
-                        await db.execute('INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
-                            [uId, remoteJid.split('@')[0], body, replyText]);
-                        console.log(`[BOT] Successfully replied to ${remoteJid}`);
+                        try {
+                            const finalSock = sessions.get(uId);
+                            if (!finalSock) return;
+                            await finalSock.sendMessage(remoteJid, { text: replyText });
+                            await db.execute('INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
+                                [uId, remoteJid.split('@')[0], body, replyText]);
+                            console.log(`[BOT] Successfully replied to ${remoteJid}`);
+                        } catch (sendErr) {
+                            console.error('[BOT SEND ERROR]', sendErr.message);
+                        }
                     }, 2000);
                 } catch (err) { console.error('[BOT ERROR]', err.message); }
             };
