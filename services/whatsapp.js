@@ -15,8 +15,10 @@ const pino = require('pino');
 const sessions = new Map();
 const initializing = new Set();
 const pendingBots = new Map();
-const retryCount = new Map();
 
+/**
+ * Robust Auth State for Cloud (MySQL)
+ */
 async function useDatabaseAuthState(userId) {
     const uId = parseInt(userId);
     const writeData = async (data, key) => {
@@ -33,7 +35,7 @@ async function useDatabaseAuthState(userId) {
                 [uId, key]
             );
             if (rows.length > 0) return JSON.parse(rows[0].session_data, BufferJSON.reviver);
-        } catch (error) { return null; }
+        } catch (e) { return null; }
         return null;
     };
     const removeData = async (key) => {
@@ -57,14 +59,16 @@ async function useDatabaseAuthState(userId) {
                     return data;
                 },
                 set: async (data) => {
+                    const tasks = [];
                     for (const category in data) {
                         for (const id in data[category]) {
                             const value = data[category][id];
                             const key = `${category}-${id}`;
-                            if (value) await writeData(value, key);
-                            else await removeData(key);
+                            if (value) tasks.push(writeData(value, key));
+                            else tasks.push(removeData(key));
                         }
                     }
+                    await Promise.all(tasks);
                 }
             }
         },
@@ -72,39 +76,44 @@ async function useDatabaseAuthState(userId) {
     };
 }
 
+/**
+ * Core WhatsApp Engine
+ */
 async function initializeWhatsApp(userId, io) {
     const uId = parseInt(userId);
     if (sessions.has(uId)) return sessions.get(uId);
     if (initializing.has(uId)) return;
 
     initializing.add(uId);
-    console.log(`[SESSION] Cloud-Init for user ${uId}...`);
+    console.log(`[ENGINE] Starting for user ${uId}...`);
 
     try {
         const { state, saveCreds } = await useDatabaseAuthState(uId);
-        const version = [2, 3000, 1015901307]; // Stable Baileys version
+        const { version } = await fetchLatestBaileysVersion();
 
         const sock = makeWASocket({
             version,
             auth: state,
             printQRInTerminal: false,
             logger: pino({ level: 'silent' }),
-            browser: ['Windows', 'Chrome', '11.0.0'],
+            browser: ['EbotConnect', 'Chrome', '115.0.0'],
             connectTimeoutMs: 120000,
-            keepAliveIntervalMs: 30000,
+            defaultQueryTimeoutMs: 60000,
+            keepAliveIntervalMs: 20000,
+            generateHighQualityLinkPreview: false,
+            syncFullHistory: false, // Critical: don't download old chats
             markOnline: false,
-            syncFullHistory: false, // CRITICAL FOR RENDER/CLOUD
-            shouldSyncHistoryMessage: () => false, // DO NOT sync history
         });
 
         sessions.set(uId, sock);
+
         sock.ev.on('creds.update', saveCreds);
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log(`[SESSION] QR Ready for user ${uId}`);
+                console.log(`[ENGINE] New QR for user ${uId}`);
                 const qrDataUrl = await qrcode.toDataURL(qr);
                 io.to(`user_${uId}`).emit('qr', qrDataUrl);
                 initializing.delete(uId);
@@ -114,30 +123,25 @@ async function initializeWhatsApp(userId, io) {
                 initializing.delete(uId);
                 const error = lastDisconnect?.error;
                 const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
-                console.log(`[SESSION] Disconnected user ${uId}: ${statusCode}`);
+                console.log(`[ENGINE] Closed for ${uId}: ${statusCode}`);
+                
                 sessions.delete(uId);
 
-                const isFatal = [DisconnectReason.loggedOut, 401, 403].includes(statusCode);
-                if (isFatal) {
+                // If connection failed, wipe creds because they are likely corrupted/expired
+                if (statusCode === 'Connection Failure' || statusCode === 401 || statusCode === 403) {
+                    console.log(`[ENGINE] Cleaning up bad session for ${uId}...`);
                     await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
                     io.to(`user_${uId}`).emit('status', 'disconnected');
-                } else {
-                    const currentRetries = retryCount.get(uId) || 0;
-                    if (currentRetries < 3) {
-                        retryCount.set(uId, currentRetries + 1);
-                        console.log(`[SESSION] Retrying ${uId} (${currentRetries + 1}/3)...`);
-                        setTimeout(() => initializeWhatsApp(uId, io), 10000);
-                    } else {
-                        console.log(`[SESSION] Giving up on ${uId}. Wiping session.`);
-                        await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
-                        retryCount.delete(uId);
-                        io.to(`user_${uId}`).emit('status', 'disconnected');
-                    }
+                    return;
                 }
-            } else if (connection === 'open') {
+
+                // Normal retry for other errors
+                setTimeout(() => initializeWhatsApp(uId, io), 5000);
+            } 
+            
+            else if (connection === 'open') {
                 initializing.delete(uId);
-                retryCount.delete(uId);
-                console.log(`[SESSION] user ${uId} is ONLINE`);
+                console.log(`[ENGINE] User ${uId} is ONLINE`);
                 await db.execute(
                     'INSERT INTO whatsapp_sessions (user_id, session_key, status, connected_at) VALUES (?, \'status_meta\', \'connected\', NOW()) ON DUPLICATE KEY UPDATE status=\'connected\', connected_at=NOW()',
                     [uId]
@@ -150,34 +154,31 @@ async function initializeWhatsApp(userId, io) {
             if (m.type !== 'notify') return;
             const msg = m.messages[0];
             if (!msg.message || msg.key.fromMe) return;
+
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.endsWith('@g.us')) return;
 
-            console.log(`[BOT] Incoming message from ${remoteJid}`);
-
+            // Fetch Biz Info
             const [bizInfo] = await db.execute(`
-                SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
+                SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.welcome_message, b.auto_reply_message 
                 FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
                 ORDER BY b.id DESC LIMIT 1`, [uId]);
             
             if (!bizInfo || bizInfo.length === 0 || bizInfo[0].is_active !== 1) return;
             const biz = bizInfo[0];
 
-            const [recentLogs] = await db.execute(
-                'SELECT id FROM messages WHERE user_id = ? AND customer_number = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1',
-                [uId, remoteJid.split('@')[0]]
-            );
-
+            // AI Reply Logic
             const executeBotReply = async () => {
                 try {
-                    let body = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || "";
+                    const body = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || "";
                     if (!body) return;
 
                     const [subs] = await db.execute('SELECT status FROM subscriptions WHERE user_id = ? AND status = \'active\' AND expiry_date > NOW()', [uId]);
                     if (!subs || subs.length === 0) return;
 
                     const replyText = await generateAIReply(body, biz);
-                    
+                    if (!replyText) return;
+
                     await sock.sendPresenceUpdate('composing', remoteJid);
                     setTimeout(async () => {
                         await sock.sendMessage(remoteJid, { text: replyText });
@@ -187,6 +188,12 @@ async function initializeWhatsApp(userId, io) {
                 } catch (err) { console.error('[BOT ERROR]', err.message); }
             };
 
+            // Smart Delay (2 minutes for first message)
+            const [recentLogs] = await db.execute(
+                'SELECT id FROM messages WHERE user_id = ? AND customer_number = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1',
+                [uId, remoteJid.split('@')[0]]
+            );
+
             if (recentLogs.length === 0) {
                 const pendingKey = `${uId}:${remoteJid}`;
                 if (pendingBots.has(pendingKey)) clearTimeout(pendingBots.get(pendingKey));
@@ -194,11 +201,13 @@ async function initializeWhatsApp(userId, io) {
                     pendingBots.delete(pendingKey);
                     executeBotReply();
                 }, 120000));
-            } else { executeBotReply(); }
+            } else {
+                executeBotReply();
+            }
         });
 
     } catch (err) {
-        console.error(`[SESSION FATAL]`, err.message);
+        console.error(`[ENGINE FATAL]`, err.message);
         initializing.delete(uId);
     }
 }
@@ -206,20 +215,17 @@ async function initializeWhatsApp(userId, io) {
 async function generateAIReply(customerMessage, bizInfo) {
     try {
         const apiKey = process.env.GROQ_API_KEY?.trim();
-        if (!apiKey) {
-            console.log('[AI WARNING] GROQ_API_KEY is missing from environment variables!');
-            return bizInfo.auto_reply_message || "Service offline.";
-        }
-        
+        if (!apiKey) return bizInfo.auto_reply_message || "Service offline.";
+
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [
-                { role: "system", content: `You are ${bizInfo.business_name}. ${bizInfo.description}. Products: ${bizInfo.products}. FAQs: ${bizInfo.faqs}.` },
+                { role: "system", content: `You are the AI assistant for ${bizInfo.business_name}. Business Info: ${bizInfo.description}. Products: ${bizInfo.products}. FAQs: ${bizInfo.faqs}.` },
                 { role: "user", content: customerMessage }
             ],
             temperature: 0.7
         }, { headers: { 'Authorization': `Bearer ${apiKey}` }, timeout: 15000 });
-        
+
         return response.data.choices[0].message.content.trim();
     } catch (error) { 
         console.error('[AI ERROR]', error.response?.data || error.message);
