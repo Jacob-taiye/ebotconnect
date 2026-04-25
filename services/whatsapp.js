@@ -101,7 +101,7 @@ async function initializeWhatsApp(userId, io) {
             defaultQueryTimeoutMs: 60000,
             keepAliveIntervalMs: 20000,
             generateHighQualityLinkPreview: false,
-            syncFullHistory: false, // Critical: don't download old chats
+            syncFullHistory: false,
             markOnline: false,
         });
 
@@ -127,7 +127,6 @@ async function initializeWhatsApp(userId, io) {
                 
                 sessions.delete(uId);
 
-                // If connection failed, wipe creds because they are likely corrupted/expired
                 if (statusCode === 'Connection Failure' || statusCode === 401 || statusCode === 403) {
                     console.log(`[ENGINE] Cleaning up bad session for ${uId}...`);
                     await db.execute('DELETE FROM whatsapp_sessions WHERE user_id = ?', [uId]);
@@ -135,7 +134,6 @@ async function initializeWhatsApp(userId, io) {
                     return;
                 }
 
-                // Normal retry for other errors
                 setTimeout(() => initializeWhatsApp(uId, io), 5000);
             } 
             
@@ -158,32 +156,52 @@ async function initializeWhatsApp(userId, io) {
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.endsWith('@g.us')) return;
 
+            const body = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || "";
+            if (!body) return;
+
+            console.log(`[BOT] Incoming message from ${remoteJid}: "${body}"`);
+
             // Fetch Biz Info
             const [bizInfo] = await db.execute(`
                 SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.welcome_message, b.auto_reply_message 
                 FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
                 ORDER BY b.id DESC LIMIT 1`, [uId]);
             
-            if (!bizInfo || bizInfo.length === 0 || bizInfo[0].is_active !== 1) return;
+            if (!bizInfo || bizInfo.length === 0) {
+                console.log(`[BOT] No business info found for user ${uId}`);
+                return;
+            }
+            
+            if (bizInfo[0].is_active !== 1) {
+                console.log(`[BOT] Bot is set to OFF for user ${uId}`);
+                return;
+            }
+
             const biz = bizInfo[0];
 
             // AI Reply Logic
             const executeBotReply = async () => {
                 try {
-                    const body = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || "";
-                    if (!body) return;
+                    console.log(`[BOT] Starting AI reply process for ${remoteJid}`);
 
                     const [subs] = await db.execute('SELECT status FROM subscriptions WHERE user_id = ? AND status = \'active\' AND expiry_date > NOW()', [uId]);
-                    if (!subs || subs.length === 0) return;
+                    if (!subs || subs.length === 0) {
+                        console.log(`[BOT] User ${uId} has no active subscription!`);
+                        return;
+                    }
 
                     const replyText = await generateAIReply(body, biz);
-                    if (!replyText) return;
+                    if (!replyText) {
+                        console.log(`[BOT] AI failed to return a string.`);
+                        return;
+                    }
 
                     await sock.sendPresenceUpdate('composing', remoteJid);
                     setTimeout(async () => {
                         await sock.sendMessage(remoteJid, { text: replyText });
                         await db.execute('INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
                             [uId, remoteJid.split('@')[0], body, replyText]);
+                        console.log(`[BOT] Successfully replied to ${remoteJid}`);
                     }, 2000);
                 } catch (err) { console.error('[BOT ERROR]', err.message); }
             };
@@ -195,6 +213,7 @@ async function initializeWhatsApp(userId, io) {
             );
 
             if (recentLogs.length === 0) {
+                console.log(`[BOT] New customer ${remoteJid}. Waiting 2 mins (Smart Delay)...`);
                 const pendingKey = `${uId}:${remoteJid}`;
                 if (pendingBots.has(pendingKey)) clearTimeout(pendingBots.get(pendingKey));
                 pendingBots.set(pendingKey, setTimeout(() => {
@@ -202,6 +221,7 @@ async function initializeWhatsApp(userId, io) {
                     executeBotReply();
                 }, 120000));
             } else {
+                console.log(`[BOT] Ongoing conversation with ${remoteJid}. Replying immediately.`);
                 executeBotReply();
             }
         });
@@ -215,12 +235,29 @@ async function initializeWhatsApp(userId, io) {
 async function generateAIReply(customerMessage, bizInfo) {
     try {
         const apiKey = process.env.GROQ_API_KEY?.trim();
-        if (!apiKey) return bizInfo.auto_reply_message || "Service offline.";
+        if (!apiKey) {
+            console.error('[AI] ERROR: GROQ_API_KEY is missing from environment variables!');
+            return bizInfo.auto_reply_message || "Service offline.";
+        }
 
+        console.log(`[AI] Calling Groq for "${customerMessage.substring(0, 20)}..."`);
+        
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [
-                { role: "system", content: `You are the AI assistant for ${bizInfo.business_name}. Business Info: ${bizInfo.description}. Products: ${bizInfo.products}. FAQs: ${bizInfo.faqs}.` },
+                { 
+                    role: "system", 
+                    content: `You are a helpful, concise assistant for ${bizInfo.business_name}. 
+                    Context: ${bizInfo.description}. 
+                    Products: ${bizInfo.products}. 
+                    FAQs: ${bizInfo.faqs}.
+                    
+                    RULES:
+                    1. Answer only what the user asks. 
+                    2. Keep replies short (1-3 sentences).
+                    3. Be friendly and conversational, not a corporate robot.
+                    4. Do not list all products or the whole description unless asked.` 
+                },
                 { role: "user", content: customerMessage }
             ],
             temperature: 0.7
