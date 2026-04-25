@@ -15,6 +15,15 @@ const io = new Server(server, {
   }
 });
 
+// Add this BEFORE your other routes
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime() 
+  });
+});
+
 // Pass io to express app
 app.set('socketio', io);
 
