@@ -180,7 +180,7 @@ async function initializeWhatsApp(userId, io) {
 
             // Fetch Biz Info
             const [bizInfo] = await db.execute(`
-                SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.welcome_message, b.auto_reply_message 
+                SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
                 FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
                 ORDER BY b.id DESC LIMIT 1`, [uId]);
             
@@ -283,16 +283,19 @@ STRICT BUSINESS CONTEXT:
 - Description: ${bizInfo.description || 'N/A'}
 - Products/Services: ${bizInfo.products || 'N/A'}
 - Prices/Pricing: ${bizInfo.prices || 'N/A'}
-- FAQs: ${bizInfo.faqs || 'N/A'}
+- Working Hours: ${bizInfo.working_hours || 'N/A'}
+- FAQs (Frequently Asked Questions): ${bizInfo.faqs || 'N/A'}
 
 STRICT RULES:
 1. ONLY use the information provided in the "STRICT BUSINESS CONTEXT" above.
-2. If a user asks something NOT covered by the context, politely say you don't have that information and ask them to contact the business directly.
-3. Do NOT make up products, prices, or details.
-4. Keep replies extremely concise (1-2 sentences).
-5. Be professional and friendly.
-6. NEVER mention you are an AI, a bot, or an assistant. Speak as an employee.
-7. If the user just says "Hi" or "Hello", use this welcome message: ${bizInfo.welcome_message || 'Hello! How can we help you today?'}` 
+2. If a user asks something NOT covered by the context (like prices or services not listed, or questions not in FAQs), politely say you don't have that information and ask them to contact the business directly.
+3. Use the "Working Hours" to answer any questions about when the business is open or closed.
+4. Use the "FAQs" section to provide direct answers to common customer questions.
+5. Do NOT make up products, prices, or details.
+6. Keep replies extremely concise (1-2 sentences).
+7. Be professional and friendly.
+8. NEVER mention you are an AI, a bot, or an assistant. Speak as an employee.
+9. If the user just says "Hi" or "Hello", use this welcome message: ${bizInfo.welcome_message || 'Hello! How can we help you today?'}` 
                 },
                 { role: "user", content: customerMessage }
             ],
