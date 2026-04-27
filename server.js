@@ -103,6 +103,21 @@ const initializeDatabase = async () => {
       [hashedPw, hashedPw]
     );
     console.log('✓ Default admin ensured (admin@ebotconnect.com / admin123)');
+
+    // 4. Seed Default Settings
+    const settings = [
+      ['price_basic', '5000'],
+      ['price_pro', '15000'],
+      ['price_enterprise', '30000']
+    ];
+    
+    for (const [key, val] of settings) {
+      await db.execute(
+        'INSERT IGNORE INTO platform_settings (setting_key, setting_value) VALUES (?, ?)',
+        [key, val]
+      );
+    }
+    console.log('✓ Default platform settings ensured');
   } catch (err) {
     console.error('! Database initialization warning:', err.message);
   }
@@ -112,6 +127,7 @@ initializeDatabase();
 // Background Task: Check for expired subscriptions every hour
 const db = require('./config/db');
 const { initializeWhatsApp } = require('./services/whatsapp');
+const { sendExpirationEmail } = require('./services/email');
 
 const fs = require('fs');
 // Auto-initialize active WhatsApp sessions on server start
@@ -143,6 +159,17 @@ setInterval(async () => {
     for (const sub of expired) {
       await db.execute(`UPDATE subscriptions SET status = 'expired' WHERE user_id = ?`, [sub.user_id]);
       await db.execute(`UPDATE business_info SET is_active = 0 WHERE user_id = ?`, [sub.user_id]);
+      
+      // Send Expiration Email
+      try {
+          const [user] = await db.execute('SELECT email, business_name FROM users WHERE id = ?', [sub.user_id]);
+          if (user.length > 0) {
+              sendExpirationEmail(user[0].email, user[0].business_name);
+          }
+      } catch (e) {
+          console.error('[EMAIL ERROR] Failed to send expiration email:', e.message);
+      }
+      
       console.log(`Subscription expired for user ${sub.user_id}. Bot disabled.`);
     }
   } catch (err) {
