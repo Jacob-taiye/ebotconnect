@@ -15,7 +15,11 @@ module.exports = function(req, res, next) {
 
     // Verify token
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        let secret = process.env.JWT_SECRET;
+        if (!secret || secret === "" || secret === "undefined") {
+            secret = "ebotconnect_default_secret_key_2024";
+        }
+        const decoded = jwt.verify(token, secret);
         req.user = decoded;
         next();
     } catch (err) {
