@@ -16,9 +16,14 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, admin.password);
         if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
+        let secret = process.env.JWT_SECRET;
+        if (!secret || secret === "" || secret === "undefined") {
+            secret = "ebotconnect_default_secret_key_2024";
+        }
+
         const token = jwt.sign(
             { adminId: admin.id, username: admin.username, isAdmin: true },
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: '24h' }
         );
 
