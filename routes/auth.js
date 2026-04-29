@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const { sendWelcomeEmail } = require('../services/email');
 require('dotenv').config();
 
 // Register Route
@@ -26,7 +27,28 @@ router.post('/register', async (req, res) => {
             [business_name, email, hashedPassword, phone]
         );
 
-        res.status(201).json({ message: 'User registered successfully', userId: result.insertId });
+        const userId = result.insertId;
+
+        // Create default business info
+        await db.execute(
+            `INSERT INTO business_info (user_id, description, welcome_message, is_active) 
+             VALUES (?, ?, ?, ?)`,
+            [userId, `Welcome to ${business_name}!`, 'Hello! How can we help you today?', 1]
+        );
+
+        // Add 7-Day Free Trial
+        const trialExpiry = new Date();
+        trialExpiry.setDate(trialExpiry.getDate() + 7);
+        await db.execute(
+            `INSERT INTO subscriptions (user_id, plan_name, amount, status, start_date, expiry_date) 
+             VALUES (?, ?, ?, ?, NOW(), ?)`,
+            [userId, '7-Day Free Trial', 0.00, 'active', trialExpiry]
+        );
+
+        // Send Welcome Email (async, don't block response)
+        sendWelcomeEmail(email, business_name);
+
+        res.status(201).json({ message: 'User registered successfully with 7-day free trial', userId });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error during registration' });
@@ -53,9 +75,14 @@ router.post('/login', async (req, res) => {
         }
 
         // Generate JWT
+        let secret = process.env.JWT_SECRET;
+        if (!secret || secret === "" || secret === "undefined") {
+            secret = "ebotconnect_default_secret_key_2024";
+        }
+
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: '1d' }
         );
 
@@ -68,8 +95,8 @@ router.post('/login', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error during login' });
+        console.error('[LOGIN ERROR]:', error.message);
+        res.status(500).json({ message: 'Server error during login', error: error.message });
     }
 });
 
