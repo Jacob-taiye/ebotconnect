@@ -3,6 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const db = require('../config/db');
 const authenticateToken = require('../middleware/auth');
+const { sendSubscriptionSuccessEmail } = require('../services/email');
 
 const FLW_SECRET = process.env.FLW_SECRET_KEY;
 const FLW_PUBLIC = process.env.FLW_PUBLIC_KEY;
@@ -47,7 +48,7 @@ router.post('/verify', authenticateToken, async (req, res) => {
             await updateSubscription(req.user.userId, data);
             return res.json({ status: 'success' });
         }
-        
+
         res.status(400).json({ message: "Payment verification failed" });
 
     } catch (error) {
@@ -61,7 +62,7 @@ router.post('/webhook', async (req, res) => {
     // Flutterwave secret hash check
     const secretHash = process.env.FLW_SECRET_HASH; // Set this in your FLW dashboard and .env
     const signature = req.headers['verif-hash'];
-    
+
     if (!signature || (signature !== secretHash)) {
         return res.status(401).end();
     }
@@ -71,13 +72,13 @@ router.post('/webhook', async (req, res) => {
         const userId = payload.tx_ref.split('-').pop();
         await updateSubscription(userId, payload);
     }
-    
+
     res.status(200).end();
 });
 
 async function updateSubscription(userId, data) {
     const amount = data.amount;
-    
+
     // Fetch dynamic pricing from platform_settings
     const [settings] = await db.execute('SELECT setting_key, setting_value FROM platform_settings');
     const pricing = {};
@@ -91,16 +92,33 @@ async function updateSubscription(userId, data) {
     const expiryDate = new Date();
     expiryDate.setMonth(expiryDate.getMonth() + 1);
 
-    // Update subscription table
-    await db.execute(
-        `INSERT INTO subscriptions (user_id, plan_name, amount, status, start_date, expiry_date) 
-         VALUES (?, ?, ?, 'active', ?, ?) 
-         ON DUPLICATE KEY UPDATE plan_name=?, amount=?, status='active', start_date=?, expiry_date=?`,
-        [userId, planName, amount, startDate, expiryDate, planName, amount, startDate, expiryDate]
-    );
+    // Safely update or insert subscription
+    const [existing] = await db.execute('SELECT id FROM subscriptions WHERE user_id = ?', [userId]);
+    if (existing.length > 0) {
+        await db.execute(
+            `UPDATE subscriptions SET plan_name=?, amount=?, status='active', start_date=?, expiry_date=? WHERE user_id=?`,
+            [planName, amount, startDate, expiryDate, userId]
+        );
+    } else {
+        await db.execute(
+            `INSERT INTO subscriptions (user_id, plan_name, amount, status, start_date, expiry_date) 
+             VALUES (?, ?, ?, 'active', ?, ?)`,
+            [userId, planName, amount, startDate, expiryDate]
+        );
+    }
 
     // Ensure bot is enabled after payment
     await db.execute('UPDATE business_info SET is_active = 1 WHERE user_id = ?', [userId]);
+
+    // Send Success Email
+    try {
+        const [user] = await db.execute('SELECT email, business_name FROM users WHERE id = ?', [userId]);
+        if (user.length > 0) {
+            sendSubscriptionSuccessEmail(user[0].email, user[0].business_name, planName, expiryDate);
+        }
+    } catch (e) {
+        console.error('[EMAIL ERROR] Failed to fetch user for success email:', e.message);
+    }
 }
 
 module.exports = router;
