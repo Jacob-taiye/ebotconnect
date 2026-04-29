@@ -206,8 +206,14 @@ async function initializeWhatsApp(userId, io) {
                         console.log(`[BOT] User ${uId} has no active subscription!`);
                         return;
                     }
+                    const cleanNumber = remoteJid.split('@')[0].split(':')[0];
+                    const [historyRows] = await db.execute(
+                        'SELECT message, bot_reply FROM messages WHERE user_id = ? AND customer_number = ? ORDER BY id DESC LIMIT 4',
+                        [uId, cleanNumber]
+                    );
+                    const chatHistory = historyRows.reverse();
 
-                    const replyText = await generateAIReply(body, biz);
+                    const replyText = await generateAIReply(body, biz, chatHistory);
                     if (!replyText) {
                         console.log(`[BOT] AI failed to return a string.`);
                         return;
@@ -227,7 +233,6 @@ async function initializeWhatsApp(userId, io) {
                             if (!finalSock) return;
 
                             let finalReplyText = replyText;
-                            const cleanNumber = remoteJid.split('@')[0].split(':')[0];
 
                             if (replyText.includes('[ORDER_TAKEN]')) {
                                 const parts = replyText.split('[ORDER_TAKEN]');
@@ -280,7 +285,7 @@ async function initializeWhatsApp(userId, io) {
     }
 }
 
-async function generateAIReply(customerMessage, bizInfo) {
+async function generateAIReply(customerMessage, bizInfo, chatHistory = []) {
     try {
         const apiKey = process.env.GROQ_API_KEY?.trim();
         if (!apiKey) {
@@ -290,12 +295,10 @@ async function generateAIReply(customerMessage, bizInfo) {
 
         console.log(`[AI] Calling Groq for "${customerMessage.substring(0, 20)}..."`);
 
-        const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                {
-                    role: "system",
-                    content: `You are the official customer assistant for "${bizInfo.business_name}".
+        const aiMessages = [
+            {
+                role: "system",
+                content: `You are the official customer assistant for "${bizInfo.business_name}".
 
 STRICT BUSINESS CONTEXT:
 - Description: ${bizInfo.description || 'N/A'}
@@ -316,9 +319,18 @@ STRICT RULES:
 9. ONLY use the welcome message ("${bizInfo.welcome_message || 'Hello! How can we help you today?'}") if the user's message is strictly a greeting (like "Hi" or "Hello"). Do NOT use it if they are placing an order or asking a question.
 10. If the user says they want to order but hasn't specified items, ask them what they would like from the available products.
 11. If the customer confirms an order with specific items, you MUST append the exact phrase "[ORDER_TAKEN]" followed by the order summary at the very end of your message. For example: "Thank you! [ORDER_TAKEN] 2x Apples, 1x Banana."`
-                },
-                { role: "user", content: customerMessage }
-            ],
+            }
+        ];
+
+        for (const h of chatHistory) {
+            if (h.message) aiMessages.push({ role: "user", content: h.message });
+            if (h.bot_reply) aiMessages.push({ role: "assistant", content: h.bot_reply });
+        }
+        aiMessages.push({ role: "user", content: customerMessage });
+
+        const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+            model: "llama-3.3-70b-versatile",
+            messages: aiMessages,
             temperature: 0.1
         }, { headers: { 'Authorization': `Bearer ${apiKey}` }, timeout: 15000 });
 
