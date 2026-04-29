@@ -10,13 +10,13 @@ try {
         transporter = nodemailer.createTransport({
             host: process.env.EMAIL_HOST || 'mail.privateemail.com',
             port: process.env.EMAIL_PORT || 465,
-            secure: (process.env.EMAIL_PORT == 465), 
+            secure: process.env.EMAIL_PORT ? (process.env.EMAIL_PORT == 465) : true,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
             },
         });
-        
+
         // Verify connection silently
         transporter.verify((error) => {
             if (error) console.warn('[EMAIL] Warning: SMTP connection failed. Emails may not send.', error.message);
