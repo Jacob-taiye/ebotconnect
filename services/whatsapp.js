@@ -225,9 +225,27 @@ async function initializeWhatsApp(userId, io) {
                         try {
                             const finalSock = sessions.get(uId);
                             if (!finalSock) return;
-                            await finalSock.sendMessage(remoteJid, { text: replyText });
+                            
+                            let finalReplyText = replyText;
+                            const cleanNumber = remoteJid.split('@')[0].split(':')[0];
+                            
+                            if (replyText.includes('[ORDER_TAKEN]')) {
+                                const parts = replyText.split('[ORDER_TAKEN]');
+                                finalReplyText = parts[0].trim();
+                                const orderSummary = parts.slice(1).join('[ORDER_TAKEN]').trim();
+                                
+                                await db.execute('INSERT INTO orders (user_id, customer_number, order_details) VALUES (?, ?, ?)',
+                                    [uId, cleanNumber, orderSummary]);
+                                
+                                io.to(`user_${uId}`).emit('new_order', {
+                                    customer_number: cleanNumber,
+                                    details: orderSummary
+                                });
+                            }
+                            
+                            await finalSock.sendMessage(remoteJid, { text: finalReplyText });
                             await db.execute('INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
-                                [uId, remoteJid.split('@')[0], body, replyText]);
+                                [uId, cleanNumber, body, finalReplyText]);
                             console.log(`[BOT] Successfully replied to ${remoteJid}`);
                         } catch (sendErr) {
                             console.error('[BOT SEND ERROR]', sendErr.message);
@@ -239,7 +257,7 @@ async function initializeWhatsApp(userId, io) {
             // Smart Delay (2 minutes for first message)
             const [recentLogs] = await db.execute(
                 'SELECT id FROM messages WHERE user_id = ? AND customer_number = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1',
-                [uId, remoteJid.split('@')[0]]
+                [uId, remoteJid.split('@')[0].split(':')[0]]
             );
 
             if (recentLogs.length === 0) {
@@ -295,7 +313,8 @@ STRICT RULES:
 6. Keep replies extremely concise (1-2 sentences).
 7. Be professional and friendly.
 8. NEVER mention you are an AI, a bot, or an assistant. Speak as an employee.
-9. If the user just says "Hi" or "Hello", use this welcome message: ${bizInfo.welcome_message || 'Hello! How can we help you today?'}` 
+9. If the user just says "Hi" or "Hello", use this welcome message: ${bizInfo.welcome_message || 'Hello! How can we help you today?'}
+10. If the customer confirms an order, you MUST append the exact phrase "[ORDER_TAKEN]" followed by the order summary at the very end of your message. For example: "Thank you! [ORDER_TAKEN] 2x Apples, 1x Banana."` 
                 },
                 { role: "user", content: customerMessage }
             ],
