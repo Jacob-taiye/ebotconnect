@@ -1,6 +1,6 @@
-const { 
-    makeWASocket, 
-    DisconnectReason, 
+const {
+    makeWASocket,
+    DisconnectReason,
     fetchLatestBaileysVersion,
     proto,
     initAuthCreds,
@@ -124,7 +124,7 @@ async function initializeWhatsApp(userId, io) {
                 const error = lastDisconnect?.error;
                 const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
                 console.log(`[ENGINE] Closed for ${uId}: ${statusCode}`);
-                
+
                 // Clear from sessions map immediately on close
                 if (sessions.get(uId) === sock) {
                     sessions.delete(uId);
@@ -140,8 +140,8 @@ async function initializeWhatsApp(userId, io) {
                 // If conflict, wait longer before retrying to let the other instance die (Render deploy)
                 const delay = statusCode === 'Stream Errored (conflict)' ? 10000 : 5000;
                 setTimeout(() => initializeWhatsApp(uId, io), delay);
-            } 
-            
+            }
+
             else if (connection === 'open') {
                 initializing.delete(uId);
                 console.log(`[ENGINE] User ${uId} is ONLINE`);
@@ -183,12 +183,12 @@ async function initializeWhatsApp(userId, io) {
                 SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
                 FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
                 ORDER BY b.id DESC LIMIT 1`, [uId]);
-            
+
             if (!bizInfo || bizInfo.length === 0) {
                 console.log(`[BOT] No business info found for user ${uId}`);
                 return;
             }
-            
+
             if (bizInfo[0].is_active !== 1) {
                 console.log(`[BOT] Bot is set to OFF for user ${uId}`);
                 return;
@@ -225,24 +225,24 @@ async function initializeWhatsApp(userId, io) {
                         try {
                             const finalSock = sessions.get(uId);
                             if (!finalSock) return;
-                            
+
                             let finalReplyText = replyText;
                             const cleanNumber = remoteJid.split('@')[0].split(':')[0];
-                            
+
                             if (replyText.includes('[ORDER_TAKEN]')) {
                                 const parts = replyText.split('[ORDER_TAKEN]');
                                 finalReplyText = parts[0].trim();
                                 const orderSummary = parts.slice(1).join('[ORDER_TAKEN]').trim();
-                                
+
                                 await db.execute('INSERT INTO orders (user_id, customer_number, order_details) VALUES (?, ?, ?)',
                                     [uId, cleanNumber, orderSummary]);
-                                
+
                                 io.to(`user_${uId}`).emit('new_order', {
                                     customer_number: cleanNumber,
                                     details: orderSummary
                                 });
                             }
-                            
+
                             await finalSock.sendMessage(remoteJid, { text: finalReplyText });
                             await db.execute('INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
                                 [uId, cleanNumber, body, finalReplyText]);
@@ -289,12 +289,12 @@ async function generateAIReply(customerMessage, bizInfo) {
         }
 
         console.log(`[AI] Calling Groq for "${customerMessage.substring(0, 20)}..."`);
-        
+
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [
-                { 
-                    role: "system", 
+                {
+                    role: "system",
                     content: `You are the official customer assistant for "${bizInfo.business_name}".
 
 STRICT BUSINESS CONTEXT:
@@ -313,8 +313,9 @@ STRICT RULES:
 6. Keep replies extremely concise (1-2 sentences).
 7. Be professional and friendly.
 8. NEVER mention you are an AI, a bot, or an assistant. Speak as an employee.
-9. If the user just says "Hi" or "Hello", use this welcome message: ${bizInfo.welcome_message || 'Hello! How can we help you today?'}
-10. If the customer confirms an order, you MUST append the exact phrase "[ORDER_TAKEN]" followed by the order summary at the very end of your message. For example: "Thank you! [ORDER_TAKEN] 2x Apples, 1x Banana."` 
+9. ONLY use the welcome message ("${bizInfo.welcome_message || 'Hello! How can we help you today?'}") if the user's message is strictly a greeting (like "Hi" or "Hello"). Do NOT use it if they are placing an order or asking a question.
+10. If the user says they want to order but hasn't specified items, ask them what they would like from the available products.
+11. If the customer confirms an order with specific items, you MUST append the exact phrase "[ORDER_TAKEN]" followed by the order summary at the very end of your message. For example: "Thank you! [ORDER_TAKEN] 2x Apples, 1x Banana."`
                 },
                 { role: "user", content: customerMessage }
             ],
@@ -322,9 +323,9 @@ STRICT RULES:
         }, { headers: { 'Authorization': `Bearer ${apiKey}` }, timeout: 15000 });
 
         return response.data.choices[0].message.content.trim();
-    } catch (error) { 
+    } catch (error) {
         console.error('[AI ERROR]', error.response?.data || error.message);
-        return bizInfo.auto_reply_message || "I'm having trouble thinking right now."; 
+        return bizInfo.auto_reply_message || "I'm having trouble thinking right now.";
     }
 }
 
