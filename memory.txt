@@ -1,0 +1,36 @@
+# EbotConnect - Project Progress Summary (Updated April 25, 2026)
+
+## Project Overview
+EbotConnect is a SaaS platform enabling businesses to deploy AI-powered WhatsApp chatbots using Node.js, Express, MySQL, Baileys, and Groq (Llama 3).
+
+## Recent Updates & Fixes:
+
+### 1. AI Brain (Groq) & Logic Refinement
+- **Strict Factual Adherence**: Refined the system prompt to force the AI to ONLY use provided business context. Politeness rules added for off-context questions.
+- **Deterministic Responses**: Lowered temperature to 0.1 and enforced 1-2 sentence brevity.
+- **Status Filter**: Implemented logic to ignore `status@broadcast`, preventing the bot from replying to WhatsApp Status updates.
+- **Human Override**: AI replies are now automatically cancelled if the business owner sends a manual message during the 2-minute delay window.
+
+### 2. Express 5 & Cloud Stability
+- **Path-to-Regexp Fix**: Resolved `PathError` crashes caused by Express 5's new wildcard rules by implementing a pathless `app.use` catch-all strategy.
+- **Conflict Handling**: Added a 10-second cool-down for `Stream Errored (conflict)` and ensured the bot always fetches the latest active socket from the `sessions` map before replying.
+- **Health Check**: Added a `/health` endpoint for monitoring and keep-alive pings.
+
+### 3. Admin & Security
+- **Robust Auto-Seeding**: Updated `server.js` to ensure the default admin (`admin@ebotconnect.com` / `admin123`) is always reset/ensured on startup using `ON DUPLICATE KEY UPDATE`.
+- **Admin Redirect Fix**: Fixed the catch-all route to prevent admin sub-pages from redirecting to the user index.
+- **Emergency Reset**: Created `reset_admin.js` to allow manual credential recovery via CLI.
+
+### 4. Infrastructure & Maintenance
+- **Robust Session Cleanup**: Removed legacy file-system cleanup from the logout route; sessions are now handled exclusively via the database for better cloud compatibility.
+- **Registration Automation**: New user registration now automatically creates a default `business_info` record, ensuring the bot is "Active" and the dashboard is functional immediately.
+- **Dependency Stability**: Pinned `@whiskeysockets/baileys` to version `6.6.0` and removed unused Gemini AI dependencies to keep the project lean and stable.
+
+## Technical Configuration:
+- **Express Version**: 5.x (optimized).
+- **Groq Model**: `llama-3.3-70b-versatile`.
+- **Delay Window**: 120,000ms (2 minutes).
+- **Admin Access**: `/admin/login.html` (admin@ebotconnect.com / admin123).
+
+## Current Status:
+The platform is stable, deployed on Render, and fully optimized for factual AI interaction and human-in-the-loop control.

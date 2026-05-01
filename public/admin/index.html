@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/jpeg" href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
+    <title>Admin Dashboard | ebotconnect</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#00687b",
+                        "primary-container": "#00a3c1",
+                        "on-primary": "#ffffff",
+                        "surface": "#f5fafc",
+                        "on-surface": "#171c1e",
+                        "surface-container": "#eaeff1",
+                        "outline-variant": "#bcc9cd",
+                    },
+                    "borderRadius": { "lg": "1rem", "xl": "1.5rem", "2xl": "2rem" },
+                    "fontFamily": { "headline": ["Manrope", "sans-serif"], "body": ["Inter", "sans-serif"] }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .active-nav { background-color: #00687b; color: white !important; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen flex">
+    <!-- Mobile Nav Toggle -->
+    <div class="lg:hidden fixed top-4 left-4 z-[60]">
+        <button id="menuBtn" class="p-3 bg-white border border-outline-variant/30 rounded-xl text-primary shadow-sm"><span class="material-symbols-outlined">menu</span></button>
+    </div>
+    <div id="overlay" class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+        <div class="p-8 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-primary rounded-lg text-on-primary"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span></div>
+                <span class="font-headline font-extrabold text-2xl text-primary tracking-tighter">Admin Panel</span>
+            </div>
+            <button id="closeMenuBtn" class="lg:hidden text-on-surface-variant"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        
+        <nav class="flex-grow px-4 space-y-2">
+            <a href="index.html" class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl font-semibold"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+            <a href="businesses.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">corporate_fare</span>Businesses</a>
+            <a href="subscriptions.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">payments</span>Subscriptions</a>
+            <a href="messages.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">forum</span>Global Messages</a>
+            <a href="settings.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">settings</span>Platform Settings</a>
+        </nav>
+
+        <div class="p-6 border-t border-outline-variant/20">
+            <button id="logoutBtn" class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-red-500 hover:bg-red-50 font-semibold transition-all">
+                <span class="material-symbols-outlined">logout</span>Logout
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-grow lg:ml-72 p-6 lg:p-10">
+        <header class="mb-10 pt-12 lg:pt-0">
+            <h1 class="text-4xl font-headline font-extrabold tracking-tight">System Overview</h1>
+            <p class="text-on-surface-variant font-medium">Manage EbotConnect ecosystem health and metrics.</p>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="bg-white p-6 rounded-3xl border border-outline-variant/20 shadow-sm">
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">Total Businesses</p>
+                <div class="flex items-end justify-between">
+                    <h3 id="statBusinesses" class="text-3xl font-black">0</h3>
+                    <span id="statNewToday" class="text-xs font-bold bg-green-50 text-green-600 px-2 py-1 rounded-lg">+0 Today</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-outline-variant/20 shadow-sm">
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">Active Subs</p>
+                <h3 id="statActiveSubs" class="text-3xl font-black">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-outline-variant/20 shadow-sm">
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">Total Revenue</p>
+                <h3 id="statRevenue" class="text-3xl font-black">₦0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-outline-variant/20 shadow-sm">
+                <p class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-1">Global Messages</p>
+                <h3 id="statMessages" class="text-3xl font-black">0</h3>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-outline-variant/20 shadow-sm overflow-hidden">
+            <div class="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container/30">
+                <h2 class="text-xl font-headline font-bold">Platform Activity</h2>
+                <a href="businesses.html" class="text-primary font-bold text-sm hover:underline">Manage All Businesses</a>
+            </div>
+            <div class="p-8 overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-xs font-bold text-on-surface-variant uppercase tracking-widest border-b border-outline-variant/10">
+                            <th class="pb-4">Business</th>
+                            <th class="pb-4">Status</th>
+                            <th class="pb-4">Plan</th>
+                            <th class="pb-4">Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentBusinesses" class="divide-y divide-outline-variant/10">
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/ui.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('adminToken');
+            if (!token) window.location.href = 'login.html';
+
+            document.getElementById('logoutBtn').onclick = () => {
+                localStorage.removeItem('adminToken');
+                window.location.href = 'login.html';
+            };
+
+            try {
+                // Fetch Stats
+                const statsRes = await fetch('/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const stats = await statsRes.json();
+                
+                document.getElementById('statBusinesses').textContent = stats.totalBusinesses;
+                document.getElementById('statActiveSubs').textContent = stats.activeSubs;
+                document.getElementById('statRevenue').textContent = `₦${Number(stats.totalRevenue).toLocaleString()}`;
+                document.getElementById('statMessages').textContent = stats.totalMessages.toLocaleString();
+                document.getElementById('statNewToday').textContent = `+${stats.newSignups} Today`;
+
+                // Fetch Recent Businesses
+                const bizRes = await fetch('/api/admin/businesses', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const businesses = await bizRes.json();
+                const tbody = document.getElementById('recentBusinesses');
+                
+                businesses.slice(0, 5).forEach(biz => {
+                    tbody.innerHTML += `
+                        <tr class="text-sm">
+                            <td class="py-4">
+                                <div class="font-bold">${biz.business_name}</div>
+                                <div class="text-xs text-on-surface-variant">${biz.email}</div>
+                            </td>
+                            <td class="py-4">
+                                <span class="px-2 py-1 rounded-lg text-xs font-bold ${biz.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}">${biz.status}</span>
+                            </td>
+                            <td class="py-4 font-medium">${biz.plan_name || 'Free'}</td>
+                            <td class="py-4 text-xs text-on-surface-variant">${new Date(biz.created_at).toLocaleDateString()}</td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+</html>

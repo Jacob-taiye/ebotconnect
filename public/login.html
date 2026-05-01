@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" type="image/jpeg"
+        href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
+    <title>Login | ebotconnect</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#5dd5f5",
+                        "tertiary-fixed": "#ffdcc1",
+                        "on-surface": "#171c1e",
+                        "on-primary-fixed-variant": "#004e5d",
+                        "surface-container-high": "#e4e9eb",
+                        "on-secondary-fixed": "#001f27",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "secondary": "#3c6470",
+                        "surface-container": "#eaeff1",
+                        "surface-bright": "#f5fafc",
+                        "on-secondary-container": "#416874",
+                        "tertiary-container": "#d28231",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#6c3a00",
+                        "primary-container": "#00a3c1",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#dee3e5",
+                        "outline-variant": "#bcc9cd",
+                        "on-primary-fixed": "#001f27",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f5fafc",
+                        "secondary-fixed": "#c0e9f7",
+                        "surface-tint": "#00687b",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f5fafc",
+                        "surface-dim": "#d6dbdd",
+                        "secondary-fixed-dim": "#a4cddb",
+                        "primary-fixed": "#afecff",
+                        "secondary-container": "#bde6f4",
+                        "inverse-on-surface": "#edf1f4",
+                        "primary-fixed-dim": "#5dd5f5",
+                        "surface-container-highest": "#dee3e5",
+                        "inverse-surface": "#2c3133",
+                        "on-background": "#171c1e",
+                        "on-tertiary-container": "#472500",
+                        "tertiary": "#8e4e00",
+                        "tertiary-fixed-dim": "#ffb778",
+                        "surface-container-low": "#eff4f7",
+                        "on-secondary-fixed-variant": "#234c57",
+                        "primary": "#00687b",
+                        "on-primary-container": "#00333e",
+                        "on-tertiary-fixed": "#2e1500",
+                        "on-surface-variant": "#3d494d",
+                        "error-container": "#ffdad6",
+                        "outline": "#6d797d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+
+        .pulse-accent {
+            box-shadow: 0 0 40px 0 rgba(0, 104, 123, 0.1);
+        }
+    </style>
+    <style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-surface font-body text-on-surface min-h-screen flex flex-col selection:bg-primary-fixed selection:text-on-primary-fixed">
+    <!-- Auth Shell Suppression: No TopAppBar or SideNav for Login -->
+    <main class="flex-grow flex items-center justify-center p-6 md:p-12 lg:p-24 relative overflow-hidden">
+        <!-- Background Editorial Element -->
+        <div
+            class="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-primary-fixed/20 to-transparent pointer-events-none hidden lg:block">
+        </div>
+        <div
+            class="absolute -bottom-24 -left-24 w-96 h-96 bg-secondary-container/30 rounded-full blur-3xl pointer-events-none">
+        </div>
+        <div class="w-full max-w-5xl flex flex-col md:flex-row items-stretch gap-12 lg:gap-24">
+            <!-- Branding/Value Prop Section (Left Column) -->
+            <div class="hidden md:flex flex-col justify-center flex-1 space-y-8">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 bg-primary rounded-xl flex items-center justify-center">
+                        <span class="material-symbols-outlined text-on-primary text-3xl"
+                            style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+                    </div>
+                    <a href="index.html"
+                        class="font-headline font-extrabold tracking-tighter text-3xl text-primary">ebotconnect</a>
+                </div>
+                <div class="space-y-4">
+                    <h1
+                        class="font-headline text-5xl lg:text-6xl font-extrabold text-on-surface tracking-tight leading-tight">
+                        Architecture for <span class="text-primary">Intelligent</span> Dialogue.
+                    </h1>
+                    <p class="text-on-surface-variant text-lg max-w-md leading-relaxed">
+                        Access your conversational workspace. Precision-engineered AI for the modern B2B ecosystem.
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-surface-container-low rounded-xl border border-outline-variant/10">
+                        <p class="font-headline font-bold text-2xl text-primary">99.9%</p>
+                        <p class="text-xs font-label uppercase tracking-widest text-on-surface-variant">Uptime SLA</p>
+                    </div>
+                    <div class="p-4 bg-surface-container-low rounded-xl border border-outline-variant/10">
+                        <p class="font-headline font-bold text-2xl text-primary">256-bit</p>
+                        <p class="text-xs font-label uppercase tracking-widest text-on-surface-variant">Encryption</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Login Card Section (Right Column) -->
+            <div class="flex-1 flex flex-col justify-center">
+                <div
+                    class="pulse-accent surface-container-lowest glass-panel rounded-xl p-8 md:p-10 border border-outline-variant/15 relative">
+                    <!-- Mobile Logo (Visible only on small screens) -->
+                    <div class="md:hidden flex items-center gap-2 mb-8">
+                        <span class="material-symbols-outlined text-primary text-2xl"
+                            style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+                        <span
+                            class="font-headline font-extrabold tracking-tighter text-xl text-primary">ebotconnect</span>
+                    </div>
+                    <div class="mb-10">
+                        <h2 class="font-headline text-3xl font-bold text-on-surface mb-2">Welcome back</h2>
+                        <p class="text-on-surface-variant">Please enter your credentials to continue</p>
+                    </div>
+                    <form id="loginForm" class="space-y-6">
+                        <!-- Email Field -->
+                        <div class="space-y-2">
+                            <label class="font-label text-sm font-semibold text-on-surface-variant ml-1"
+                                for="email">Email Address</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <span
+                                        class="material-symbols-outlined text-outline group-focus-within:text-primary transition-colors text-xl">mail</span>
+                                </div>
+                                <input
+                                    class="w-full pl-12 pr-4 py-4 bg-surface-container border-none rounded-lg focus:ring-0 focus:bg-surface-container-low transition-all text-on-surface placeholder:text-outline/60 outline-none ring-2 ring-transparent focus:ring-primary/20"
+                                    id="email" name="email" placeholder="name@company.com" type="email" required />
+                                <div
+                                    class="absolute bottom-0 left-0 h-0.5 bg-primary scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300 w-full rounded-full">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Password Field -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center ml-1">
+                                <label class="font-label text-sm font-semibold text-on-surface-variant"
+                                    for="password">Password</label>
+                                <a class="text-sm font-medium text-primary hover:text-primary-container transition-colors"
+                                    href="#">Forgot password?</a>
+                            </div>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <span
+                                        class="material-symbols-outlined text-outline group-focus-within:text-primary transition-colors text-xl">lock</span>
+                                </div>
+                                <input
+                                    class="w-full pl-12 pr-12 py-4 bg-surface-container border-none rounded-lg focus:ring-0 focus:bg-surface-container-low transition-all text-on-surface placeholder:text-outline/60 outline-none ring-2 ring-transparent focus:ring-primary/20"
+                                    id="password" name="password" placeholder="••••••••" type="password" required />
+                                <button
+                                    class="absolute inset-y-0 right-0 pr-4 flex items-center text-outline hover:text-on-surface-variant transition-colors"
+                                    type="button">
+                                    <span class="material-symbols-outlined text-xl">visibility</span>
+                                </button>
+                                <div
+                                    class="absolute bottom-0 left-0 h-0.5 bg-primary scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300 w-full rounded-full">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Remember Me -->
+                        <div class="flex items-center space-x-3">
+                            <input
+                                class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary focus:ring-offset-background"
+                                id="remember" type="checkbox" />
+                            <label class="text-sm font-medium text-on-surface-variant" for="remember">Keep me signed in
+                                for 30 days</label>
+                        </div>
+                        <!-- Sign In Button -->
+                        <button
+                            class="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] transition-all"
+                            type="submit">
+                            Sign In
+                        </button>
+                    </form>
+                    <!-- Divider -->
+                    <div class="relative my-10">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-outline-variant/30"></div>
+                        </div>
+                        <div class="relative flex justify-center text-xs uppercase tracking-[0.2em] font-bold">
+                            <span class="bg-white px-4 text-outline">or continue with</span>
+                        </div>
+                    </div>
+                    <!-- Social Login -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <button
+                            class="flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-lowest border border-outline-variant/30 rounded-lg hover:bg-surface-container-low transition-colors active:scale-95">
+                            <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24">
+                                <path
+                                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                    fill="#4285F4"></path>
+                                <path
+                                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                    fill="#34A853"></path>
+                                <path
+                                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                                    fill="#FBBC05"></path>
+                                <path
+                                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                    fill="#EA4335"></path>
+                            </svg>
+                            <span class="text-sm font-semibold">Google</span>
+                        </button>
+                        <button
+                            class="flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-lowest border border-outline-variant/30 rounded-lg hover:bg-surface-container-low transition-colors active:scale-95">
+                            <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24">
+                                <path
+                                    d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.82-.78.897-1.467 2.338-1.283 3.713 1.348.104 2.717-.677 3.57-1.703z">
+                                </path>
+                            </svg>
+                            <span class="text-sm font-semibold">Apple</span>
+                        </button>
+                    </div>
+                    <!-- Sign Up Link -->
+                    <div class="mt-12 text-center">
+                        <p class="text-on-surface-variant text-sm">
+                            Don't have an account yet?
+                            <a class="ml-1 font-bold text-primary hover:underline" href="register.html">Create an
+                                account</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Footer component from JSON -->
+    <footer
+        class="w-full py-12 bg-cyan-50 dark:bg-slate-950 flex flex-col md:flex-row justify-between items-center px-8 border-t border-cyan-100/10 font-inter text-xs tracking-wide uppercase">
+        <div class="text-slate-500 dark:text-slate-500 opacity-80 hover:opacity-100 transition-opacity mb-4 md:mb-0">
+            © 2024 ebotconnect. All rights reserved.
+        </div>
+        <div class="flex gap-8">
+            <a class="text-slate-500 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-300 underline transition-opacity opacity-80 hover:opacity-100"
+                href="privacy.html">Privacy Policy</a>
+            <a class="text-slate-500 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-300 underline transition-opacity opacity-80 hover:opacity-100"
+                href="terms.html">Terms of Service</a>
+            <a class="text-slate-500 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-300 underline transition-opacity opacity-80 hover:opacity-100"
+                href="data-deletion.html">Data Deletion</a>
+            <a class="text-slate-500 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-300 underline transition-opacity opacity-80 hover:opacity-100"
+                href="#">Support</a>
+        </div>
+    </footer>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/jpeg" href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
+    <title>Manage Businesses | ebotconnect</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#00687b",
+                        "surface": "#f5fafc",
+                        "on-surface": "#171c1e",
+                        "outline-variant": "#bcc9cd",
+                    },
+                    "fontFamily": { "headline": ["Manrope", "sans-serif"], "body": ["Inter", "sans-serif"] }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .active-nav { background-color: #00687b; color: white !important; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen flex">
+    <!-- Mobile Nav Toggle -->
+    <div class="lg:hidden fixed top-4 left-4 z-[60]">
+        <button id="menuBtn" class="p-3 bg-white border border-outline-variant/30 rounded-xl text-primary shadow-sm"><span class="material-symbols-outlined">menu</span></button>
+    </div>
+    <div id="overlay" class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+        <div class="p-8 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-primary rounded-lg text-on-primary"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span></div>
+                <span class="font-headline font-extrabold text-2xl text-primary tracking-tighter">Admin Panel</span>
+            </div>
+            <!-- Close button (Mobile Only) -->
+            <button id="closeMenuBtn" class="lg:hidden text-on-surface-variant"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <nav class="flex-grow px-4 space-y-2">
+            <a href="index.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+            <a href="businesses.html" class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl font-semibold"><span class="material-symbols-outlined">corporate_fare</span>Businesses</a>
+            <a href="subscriptions.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">payments</span>Subscriptions</a>
+            <a href="messages.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">forum</span>Global Messages</a>
+            <a href="settings.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium"><span class="material-symbols-outlined">settings</span>Platform Settings</a>
+        </nav>
+        <div class="p-6 border-t border-outline-variant/20">
+            <button id="logoutBtn" class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-red-500 hover:bg-red-50 font-semibold transition-all">
+                <span class="material-symbols-outlined">logout</span>Logout
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-grow lg:ml-72 p-6 lg:p-10">
+        <header class="mb-10 pt-12 lg:pt-0">
+            <h1 class="text-4xl font-headline font-extrabold tracking-tight">Manage Businesses</h1>
+            <p class="text-on-surface-variant font-medium">View, suspend, or delete registered business accounts.</p>
+        </header>
+
+        <div class="bg-white rounded-3xl border border-outline-variant/20 shadow-sm overflow-hidden">
+            <div class="p-8 overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-xs font-bold text-on-surface-variant uppercase tracking-widest border-b border-outline-variant/10">
+                            <th class="pb-4">Business</th>
+                            <th class="pb-4">Contact</th>
+                            <th class="pb-4">Subscription</th>
+                            <th class="pb-4">Status</th>
+                            <th class="pb-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="businessList" class="divide-y divide-outline-variant/10">
+                        <!-- Business Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        if (!token) window.location.href = 'login.html';
+
+        async function fetchBusinesses() {
+            try {
+                const res = await fetch('/api/admin/businesses', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById('businessList');
+                tbody.innerHTML = '';
+                
+                data.forEach(biz => {
+                    tbody.innerHTML += `
+                        <tr class="text-sm">
+                            <td class="py-6">
+                                <div class="font-bold text-lg">${biz.business_name}</div>
+                                <div class="text-xs text-on-surface-variant">Joined: ${new Date(biz.created_at).toLocaleDateString()}</div>
+                            </td>
+                            <td class="py-6">
+                                <div class="font-medium">${biz.email}</div>
+                                <div class="text-xs text-on-surface-variant">${biz.phone || 'No phone'}</div>
+                            </td>
+                            <td class="py-6">
+                                <span class="font-bold text-primary">${biz.plan_name || 'Free'}</span>
+                                <div class="text-[10px] uppercase font-bold text-on-surface-variant">${biz.sub_status || 'inactive'}</div>
+                            </td>
+                            <td class="py-6">
+                                <span class="px-3 py-1 rounded-full text-xs font-bold ${biz.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}">
+                                    ${biz.status.toUpperCase()}
+                                </span>
+                            </td>
+                            <td class="py-6">
+                                <div class="flex gap-2">
+                                    <button onclick="toggleStatus(${biz.id}, '${biz.status}')" class="p-2 rounded-lg bg-surface hover:bg-surface-container text-on-surface-variant transition-all" title="${biz.status === 'active' ? 'Suspend' : 'Activate'}">
+                                        <span class="material-symbols-outlined text-sm">${biz.status === 'active' ? 'block' : 'check_circle'}</span>
+                                    </button>
+                                    <button onclick="deleteBusiness(${biz.id})" class="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-all" title="Delete Account">
+                                        <span class="material-symbols-outlined text-sm">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        async function toggleStatus(id, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+            if (!confirm(`Are you sure you want to ${newStatus} this business?`)) return;
+            
+            try {
+                const res = await fetch(`/api/admin/businesses/${id}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (res.ok) fetchBusinesses();
+            } catch (err) { console.error(err); }
+        }
+
+        async function deleteBusiness(id) {
+            if (!confirm('CRITICAL: Delete this business and all its data? This cannot be undone.')) return;
+            try {
+                const res = await fetch(`/api/admin/businesses/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) fetchBusinesses();
+            } catch (err) { console.error(err); }
+        }
+
+        fetchBusinesses();
+    </script>
+</body>
+</html>

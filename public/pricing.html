@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/jpeg" href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
+    <title>Pricing Plans | ebotconnect</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://checkout.flutterwave.com/v3.js"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#00687b",
+                        "primary-container": "#00a3c1",
+                        "on-primary": "#ffffff",
+                        "surface": "#f5fafc",
+                        "on-surface": "#171c1e",
+                        "surface-container": "#eaeff1",
+                        "surface-container-low": "#eff4f7",
+                        "outline-variant": "#bcc9cd",
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav {
+            background-color: #00687b;
+            color: white !important;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen flex">
+    <!-- Mobile Menu Button -->
+    <div class="lg:hidden fixed top-4 left-4 z-[60]">
+        <button id="menuBtn" class="p-3 bg-white border border-outline-variant/30 rounded-xl shadow-sm flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div id="overlay" class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div class="p-8 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-primary rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+                </div>
+                <span class="font-headline font-extrabold tracking-tighter text-2xl text-primary">ebotconnect</span>
+            </div>
+            <!-- Close button (Mobile Only) -->
+            <button id="closeMenuBtn" class="lg:hidden text-on-surface-variant">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        
+        <nav class="flex-grow px-4 space-y-2">
+            <a href="dashboard.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+            <a href="profile.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">business_center</span>
+                Business Profile
+            </a>
+            <a href="connect.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">chat_bubble</span>
+                WhatsApp Bot
+            </a>
+            <a href="pricing.html" class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-semibold">
+                <span class="material-symbols-outlined">payments</span>
+                Subscription
+            </a>
+            <a href="messages.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">history</span>
+                Message Logs
+            </a>
+        </nav>
+
+        <div class="p-6 border-t border-outline-variant/20">
+            <button id="logoutBtn" class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-error hover:bg-error-container/10 transition-all font-semibold">
+                <span class="material-symbols-outlined">logout</span>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-grow lg:ml-72 p-6 lg:p-10">
+        <header class="mb-10 pt-12 lg:pt-0">
+            <h1 class="text-3xl lg:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-2">Pricing Plans</h1>
+            <div id="currentSubInfo" class="hidden bg-primary text-on-primary p-4 rounded-2xl mb-6 shadow-lg shadow-primary/20 font-medium">
+                <!-- Current Sub Info Here -->
+            </div>
+            <p class="text-on-surface-variant font-medium">Choose a plan that fits your business needs (Powered by Flutterwave).</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Basic Plan -->
+            <div class="bg-white p-10 rounded-3xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-all flex flex-col h-full">
+                <h2 class="text-2xl font-headline font-black text-on-surface mb-4">Basic</h2>
+                <div class="flex items-baseline gap-1 mb-8">
+                    <span class="text-4xl font-black text-primary">₦5,000</span>
+                    <span class="text-on-surface-variant font-medium text-sm">/month</span>
+                </div>
+                <ul class="space-y-4 mb-10 flex-grow">
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        500 Messages/month
+                    </li>
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        AI Auto-replies
+                    </li>
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        Dashboard Access
+                    </li>
+                </ul>
+                <button onclick="makePayment('Basic', 5000)" class="w-full py-4 rounded-xl border-2 border-primary text-primary font-headline font-bold hover:bg-primary/5 transition-all">Get Started</button>
+            </div>
+
+            <!-- Pro Plan -->
+            <div class="bg-white p-10 rounded-3xl border-2 border-primary shadow-xl shadow-primary/10 transition-all flex flex-col h-full relative scale-105 z-10">
+                <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest">Most Popular</div>
+                <h2 class="text-2xl font-headline font-black text-on-surface mb-4">Pro</h2>
+                <div class="flex items-baseline gap-1 mb-8">
+                    <span class="text-4xl font-black text-primary">₦15,000</span>
+                    <span class="text-on-surface-variant font-medium text-sm">/month</span>
+                </div>
+                <ul class="space-y-4 mb-10 flex-grow">
+                    <li class="flex items-center gap-3 text-on-surface-variant font-semibold">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        Unlimited Messages
+                    </li>
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        AI Auto-replies
+                    </li>
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        Dashboard Access
+                    </li>
+                </ul>
+                <button onclick="makePayment('Pro', 15000)" class="w-full py-4 rounded-xl bg-primary text-on-primary font-headline font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all">Upgrade to Pro</button>
+            </div>
+
+            <!-- Enterprise Plan -->
+            <div class="bg-white p-10 rounded-3xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-all flex flex-col h-full">
+                <h2 class="text-2xl font-headline font-black text-on-surface mb-4">Enterprise</h2>
+                <div class="flex items-baseline gap-1 mb-8">
+                    <span class="text-4xl font-black text-primary">₦30,000</span>
+                    <span class="text-on-surface-variant font-medium text-sm">/month</span>
+                </div>
+                <ul class="space-y-4 mb-10 flex-grow">
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        Unlimited Messages
+                    </li>
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        Priority Support
+                    </li>
+                    <li class="flex items-center gap-3 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary">check_circle</span>
+                        Custom Training
+                    </li>
+                </ul>
+                <button onclick="makePayment('Enterprise', 30000)" class="w-full py-4 rounded-xl border-2 border-primary text-primary font-headline font-bold hover:bg-primary/5 transition-all">Contact Sales</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) window.location.href = 'login.html';
+
+            document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = 'login.html';
+            });
+
+            try {
+                const res = await fetch('/api/dashboard/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.subscription.status === 'active') {
+                    const infoDiv = document.getElementById('currentSubInfo');
+                    infoDiv.classList.remove('hidden');
+                    const expiry = new Date(data.subscription.expiryDate).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    });
+                    infoDiv.innerHTML = `<div class="flex items-center gap-3"><span class="material-symbols-outlined">info</span>You are currently on the <strong class="underline underline-offset-4">${data.subscription.plan}</strong> plan. Expires on <strong>${expiry}</strong>.</div>`;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        async function makePayment(planName, amount) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Please login first');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/payment/initialize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ planName, amount })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message);
+
+                const config = {
+                    public_key: data.publicKey,
+                    tx_ref: data.reference,
+                    amount: amount,
+                    currency: "NGN",
+                    payment_options: "card, banktransfer, ussd",
+                    customer: {
+                        email: data.email,
+                        name: data.businessName,
+                    },
+                    customizations: {
+                        title: "ebotconnect Subscription",
+                        description: `Payment for ${planName} Plan`,
+                    },
+                    callback: function(payment) {
+                        verifyPayment(payment.transaction_id, data.reference);
+                    },
+                };
+                
+                FlutterwaveCheckout(config);
+
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function verifyPayment(transaction_id, reference) {
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch('/api/payment/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ transaction_id, reference })
+                });
+                
+                if (res.ok) {
+                    alert('Payment Successful! Your subscription is active.');
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('Payment verification failed. Please contact support.');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    </script>
+    <script src="js/ui.js"></script>
+</body>
+</html>
