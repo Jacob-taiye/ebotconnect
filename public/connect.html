@@ -325,33 +325,38 @@
             btn.innerHTML = `<svg class="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"></svg> Connecting...`;
             btn.disabled = true;
 
-            FB.login(async function (response) {
+            FB.login(function (response) {
                 if (response.authResponse) {
                     const accessToken = response.authResponse.accessToken;
-                    try {
-                        const res = await fetch('/api/meta/exchange-token', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ accessToken, platform })
-                        });
-                        const data = await res.json();
-                        if (res.ok) {
-                            showToast(`✅ ${data.message}`, true);
-                            loadConnections();
-                        } else {
-                            showToast(`❌ ${data.message}`, false);
+                    (async () => {
+                        try {
+                            const res = await fetch('/api/meta/exchange-token', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ accessToken, platform })
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                                showToast(`✅ ${data.message}`, true);
+                                loadConnections();
+                            } else {
+                                showToast(`❌ ${data.message}`, false);
+                            }
+                        } catch (err) {
+                            showToast('Connection failed. Try again.', false);
+                        } finally {
+                            btn.disabled = false;
+                            btn.innerHTML = `<span class="material-symbols-outlined text-base">login</span> Connect with ${platform === 'messenger' ? 'Facebook' : 'Instagram'}`;
                         }
-                    } catch (err) {
-                        showToast('Connection failed. Try again.', false);
-                    }
+                    })();
                 } else {
                     showToast('Facebook login was cancelled.', false);
+                    btn.disabled = false;
+                    btn.innerHTML = `<span class="material-symbols-outlined text-base">login</span> Connect with ${platform === 'messenger' ? 'Facebook' : 'Instagram'}`;
                 }
-                btn.disabled = false;
-                btn.innerHTML = `<span class="material-symbols-outlined text-base">login</span> Connect with ${platform === 'messenger' ? 'Facebook' : 'Instagram'}`;
             }, {
                 scope: 'pages_messaging,pages_show_list,pages_read_engagement,instagram_manage_messages,instagram_basic,business_management'
             });
