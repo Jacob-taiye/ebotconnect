@@ -101,4 +101,72 @@ router.get('/status', authenticateToken, async (req, res) => {
     }
 });
 
+// Auto-Connect: Exchange FB Token and Fetch User's Pages/WhatsApp
+router.post('/exchange-token', authenticateToken, async (req, res) => {
+    const { accessToken, platform } = req.body;
+    const userId = parseInt(req.user.userId);
+
+    if (!accessToken) return res.status(400).json({ message: 'Access token is required' });
+
+    try {
+        const axios = require('axios');
+
+        if (platform === 'messenger' || platform === 'instagram') {
+            // Fetch all pages the user manages
+            const pagesRes = await axios.get(
+                `https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`
+            );
+            const pages = pagesRes.data.data;
+            if (!pages || pages.length === 0) {
+                return res.status(404).json({ message: 'No Facebook Pages found for this account. Make sure you manage a Facebook Page.' });
+            }
+
+            const saved = [];
+            for (const page of pages) {
+                const pageToken = page.access_token;
+                const pageId = page.id;
+                const pageName = page.name;
+
+                if (platform === 'messenger') {
+                    await db.execute(
+                        `INSERT INTO social_connections (user_id, platform, access_token, account_id, status, connected_at)
+                         VALUES (?, 'messenger', ?, ?, 'connected', NOW())
+                         ON DUPLICATE KEY UPDATE access_token = ?, account_id = ?, status = 'connected', connected_at = NOW()`,
+                        [userId, pageToken, pageId, pageToken, pageId]
+                    );
+                    saved.push({ platform: 'messenger', name: pageName, id: pageId });
+                }
+
+                if (platform === 'instagram') {
+                    // Fetch Instagram Business Account linked to this page
+                    try {
+                        const igRes = await axios.get(
+                            `https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${pageToken}`
+                        );
+                        const igAccount = igRes.data.instagram_business_account;
+                        if (igAccount) {
+                            await db.execute(
+                                `INSERT INTO social_connections (user_id, platform, access_token, account_id, status, connected_at)
+                                 VALUES (?, 'instagram', ?, ?, 'connected', NOW())
+                                 ON DUPLICATE KEY UPDATE access_token = ?, account_id = ?, status = 'connected', connected_at = NOW()`,
+                                [userId, pageToken, igAccount.id, pageToken, igAccount.id]
+                            );
+                            saved.push({ platform: 'instagram', name: pageName, id: igAccount.id });
+                        }
+                    } catch (igErr) {
+                        console.log(`No IG account linked to page ${pageName}`);
+                    }
+                }
+            }
+            return res.json({ message: `Successfully connected ${saved.length} account(s)`, accounts: saved });
+        }
+
+        res.status(400).json({ message: 'Use manual setup for WhatsApp.' });
+
+    } catch (error) {
+        console.error('[EXCHANGE TOKEN ERROR]:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to auto-connect: ' + (error.response?.data?.error?.message || error.message) });
+    }
+});
+
 module.exports = router;
