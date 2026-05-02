@@ -78,7 +78,7 @@ async function processBotLogic(platform, accountId, senderId, messageText) {
     try {
         // 1. Find the user connected to this account_id
         const [connections] = await db.execute(
-            'SELECT user_id, access_token FROM social_connections WHERE account_id = ? AND platform = ? AND status = "connected"',
+            "SELECT user_id, access_token FROM social_connections WHERE account_id = ? AND platform = ? AND status = 'connected'",
             [accountId, platform]
         );
 

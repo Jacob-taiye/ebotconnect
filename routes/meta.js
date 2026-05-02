@@ -12,7 +12,7 @@ router.get('/config', authenticateToken, (req, res) => {
 // Meta Webhook Verification
 router.get('/webhook', (req, res) => {
     const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
-    
+
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -35,7 +35,7 @@ router.post('/webhook', async (req, res) => {
         const body = req.body;
         // Meta requires a 200 OK immediately
         res.status(200).send('EVENT_RECEIVED');
-        
+
         if (body.object) {
             // Process the webhook payload asynchronously
             await handleIncomingMessage(body);
@@ -54,7 +54,7 @@ router.post('/connect', authenticateToken, async (req, res) => {
         if (!['whatsapp', 'instagram', 'messenger'].includes(platform)) {
             return res.status(400).json({ message: "Invalid platform" });
         }
-        
+
         await db.execute(
             `INSERT INTO social_connections (user_id, platform, access_token, account_id, status, connected_at)
              VALUES (?, ?, ?, ?, 'connected', NOW())
@@ -65,7 +65,7 @@ router.post('/connect', authenticateToken, async (req, res) => {
         res.json({ message: `Successfully connected ${platform}` });
     } catch (error) {
         console.error(`[META CONNECT ERROR]:`, error);
-        res.status(500).json({ message: "Failed to save connection" });
+        res.status(500).json({ message: "Failed to save connection: " + error.message });
     }
 });
 
