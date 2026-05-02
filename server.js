@@ -17,10 +17,10 @@ const io = new Server(server, {
 
 // Add this BEFORE your other routes
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime() 
+    uptime: process.uptime()
   });
 });
 
@@ -48,17 +48,19 @@ const dashboardRoutes = require('./routes/dashboard');
 const paymentRoutes = require('./routes/payment');
 const metaRoutes = require('./routes/meta');
 const adminRoutes = require('./routes/admin');
+const whatsappRoutes = require('./routes/whatsapp'); // New route for QR
 
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/meta', metaRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Auto-Database Setup for Cloud Deployment
 const initializeDatabase = async () => {
   const db = require('./config/db');
-  
+
   // 1. Core Tables Setup
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, business_name VARCHAR(255), email VARCHAR(255) UNIQUE, password VARCHAR(255), phone VARCHAR(20), address TEXT, logo VARCHAR(255), status ENUM('active', 'suspended') DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
@@ -67,7 +69,8 @@ const initializeDatabase = async () => {
     `CREATE TABLE IF NOT EXISTS messages (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, customer_number VARCHAR(20), message TEXT, bot_reply TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS admins (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) UNIQUE, email VARCHAR(255) UNIQUE, password VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS platform_settings (id INT AUTO_INCREMENT PRIMARY KEY, setting_key VARCHAR(100) UNIQUE, setting_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`,
-    `CREATE TABLE IF NOT EXISTS orders (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, customer_number VARCHAR(20), order_details TEXT, status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`
+    `CREATE TABLE IF NOT EXISTS orders (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, customer_number VARCHAR(20), order_details TEXT, status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS whatsapp_sessions (user_id INT PRIMARY KEY, status ENUM('connected', 'disconnected') DEFAULT 'disconnected', connected_at TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`
   ];
 
   try {
@@ -111,7 +114,7 @@ const initializeDatabase = async () => {
       ['price_pro', '15000'],
       ['price_enterprise', '30000']
     ];
-    
+
     for (const [key, val] of settings) {
       await db.execute(
         'INSERT IGNORE INTO platform_settings (setting_key, setting_value) VALUES (?, ?)',
@@ -139,17 +142,17 @@ setInterval(async () => {
     for (const sub of expired) {
       await db.execute(`UPDATE subscriptions SET status = 'expired' WHERE user_id = ?`, [sub.user_id]);
       await db.execute(`UPDATE business_info SET is_active = 0 WHERE user_id = ?`, [sub.user_id]);
-      
+
       // Send Expiration Email
       try {
-          const [user] = await db.execute('SELECT email, business_name FROM users WHERE id = ?', [sub.user_id]);
-          if (user.length > 0) {
-              sendExpirationEmail(user[0].email, user[0].business_name);
-          }
+        const [user] = await db.execute('SELECT email, business_name FROM users WHERE id = ?', [sub.user_id]);
+        if (user.length > 0) {
+          sendExpirationEmail(user[0].email, user[0].business_name);
+        }
       } catch (e) {
-          console.error('[EMAIL ERROR] Failed to send expiration email:', e.message);
+        console.error('[EMAIL ERROR] Failed to send expiration email:', e.message);
       }
-      
+
       console.log(`Subscription expired for user ${sub.user_id}. Bot disabled.`);
     }
   } catch (err) {
@@ -181,3 +184,20 @@ app.use((req, res) => {
 
 // Export io for other modules
 module.exports = { app, server, io };
+
+// --- Auto-Initialize WhatsApp Sessions ---
+const { initializeWhatsApp } = require('./services/whatsapp');
+const startWhatsAppSessions = async () => {
+  try {
+    const [rows] = await db.execute('SELECT user_id FROM whatsapp_sessions WHERE status = "connected"');
+    console.log(`[BOOT] Resuming ${rows.length} WhatsApp sessions...`);
+    for (const row of rows) {
+      initializeWhatsApp(row.user_id, io);
+    }
+  } catch (err) {
+    console.error('[BOOT ERROR] Failed to resume WhatsApp sessions:', err.message);
+  }
+};
+
+// Wait a bit for DB to initialize then start sessions
+setTimeout(startWhatsAppSessions, 5000);
