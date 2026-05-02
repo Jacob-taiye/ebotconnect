@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
+
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <link rel="icon" type="image/jpeg" href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
-    <title>Connect WhatsApp | ebotconnect</title>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" type="image/jpeg"
+        href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
+    <title>Connect Socials | ebotconnect</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
     <script src="/socket.io/socket.io.js"></script>
     <script id="tailwind-config">
         tailwind.config = {
@@ -41,19 +46,42 @@
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
+
         .active-nav {
             background-color: #00687b;
             color: white !important;
         }
-        .pulse-accent {
-            box-shadow: 0 0 40px 0 rgba(0, 104, 123, 0.1);
+
+        .platform-card {
+            transition: all 0.2s ease;
+        }
+
+        .platform-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body class="bg-surface font-body text-on-surface min-h-screen flex">
     <!-- Mobile Menu Button -->
     <div class="lg:hidden fixed top-4 left-4 z-[60]">
-        <button id="menuBtn" class="p-3 bg-white border border-outline-variant/30 rounded-xl shadow-sm flex items-center justify-center text-primary">
+        <button id="menuBtn"
+            class="p-3 bg-white border border-outline-variant/30 rounded-xl shadow-sm flex items-center justify-center text-primary">
             <span class="material-symbols-outlined">menu</span>
         </button>
     </div>
@@ -62,108 +90,171 @@
     <div id="overlay" class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-40 hidden lg:hidden"></div>
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+    <aside id="sidebar"
+        class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
         <div class="p-8 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="p-2 bg-primary rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+                    <span class="material-symbols-outlined text-on-primary text-xl"
+                        style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
                 </div>
                 <span class="font-headline font-extrabold tracking-tighter text-2xl text-primary">ebotconnect</span>
             </div>
-            <!-- Close button (Mobile Only) -->
             <button id="closeMenuBtn" class="lg:hidden text-on-surface-variant">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
-        
         <nav class="flex-grow px-4 space-y-2">
-            <a href="dashboard.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
-                <span class="material-symbols-outlined">dashboard</span>
-                Dashboard
+            <a href="dashboard.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">dashboard</span> Dashboard
             </a>
-            <a href="profile.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
-                <span class="material-symbols-outlined">business_center</span>
-                Business Profile
+            <a href="profile.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">business_center</span> Business Profile
             </a>
-            <a href="connect.html" class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-semibold">
-                <span class="material-symbols-outlined">chat_bubble</span>
-                WhatsApp Bot
+            <a href="connect.html"
+                class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-semibold">
+                <span class="material-symbols-outlined">hub</span> Connect Socials
             </a>
-            <a href="pricing.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
-                <span class="material-symbols-outlined">payments</span>
-                Subscription
+            <a href="pricing.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">payments</span> Subscription
             </a>
-            <a href="messages.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
-                <span class="material-symbols-outlined">history</span>
-                Message Logs
+            <a href="messages.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">history</span> Message Logs
             </a>
         </nav>
-
         <div class="p-6 border-t border-outline-variant/20">
-            <button id="logoutBtn" class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-error hover:bg-error-container/10 transition-all font-semibold">
-                <span class="material-symbols-outlined">logout</span>
-                Logout
+            <button id="logoutBtn"
+                class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-red-500 hover:bg-red-50 transition-all font-semibold">
+                <span class="material-symbols-outlined">logout</span> Logout
             </button>
         </div>
     </aside>
 
     <!-- Main Content -->
     <main class="flex-grow lg:ml-72 p-6 lg:p-10">
-        <header class="mb-10 text-center max-w-2xl mx-auto pt-12 lg:pt-0">
-            <h1 class="text-3xl lg:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-2">Connect Socials</h1>
-            <p class="text-on-surface-variant font-medium">Link your Meta platforms to enable AI auto-replies across WhatsApp, Instagram, and Messenger.</p>
+        <header class="mb-10 max-w-3xl mx-auto pt-12 lg:pt-0">
+            <h1 class="text-3xl lg:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-2">Connect
+                Your Socials</h1>
+            <p class="text-on-surface-variant font-medium">Link your platforms below to enable AI-powered auto-replies
+                for your business.</p>
         </header>
 
-        <div class="max-w-2xl mx-auto space-y-6">
-            <!-- Connect Button Card -->
-            <div class="bg-white rounded-3xl border border-outline-variant/20 shadow-sm p-10 text-center space-y-6 relative overflow-hidden">
-                <div class="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 border-4 border-blue-100">
-                    <span class="material-symbols-outlined text-3xl">hub</span>
-                </div>
-                <h2 class="text-2xl font-headline font-black text-on-surface">Meta Facebook Login</h2>
-                <p class="text-on-surface-variant text-sm max-w-md mx-auto">Use the official Facebook Login to connect your pages and business accounts in one secure step.</p>
-                
-                <button id="fbLoginBtn" class="w-full py-4 bg-[#1877F2] text-white font-headline font-bold rounded-xl shadow-xl shadow-blue-500/20 hover:bg-[#166FE5] transition-all flex items-center justify-center gap-3">
-                    <svg viewBox="0 0 24 24" class="w-6 h-6 fill-current"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                    Connect Facebook
-                </button>
+        <!-- Toast Notification -->
+        <div id="toast"
+            class="hidden fixed top-6 right-6 z-[100] px-6 py-4 rounded-2xl shadow-xl font-semibold text-white text-sm transition-all">
+        </div>
 
-                <!-- Manual Account ID Input for MVP -->
-                <div id="manualSetupContainer" class="hidden mt-6 text-left border-t border-outline-variant/20 pt-6">
-                    <h3 class="font-bold text-on-surface mb-4">Manual Configuration</h3>
-                    <form id="manualConnectForm" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-on-surface-variant mb-1">Platform</label>
-                            <select id="manualPlatform" class="w-full p-3 rounded-xl border border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all text-on-surface">
-                                <option value="whatsapp">WhatsApp</option>
-                                <option value="messenger">Facebook Messenger</option>
-                                <option value="instagram">Instagram</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-on-surface-variant mb-1">Meta Access Token</label>
-                            <input type="text" id="manualToken" class="w-full p-3 rounded-xl border border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all text-on-surface" placeholder="EAA...">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-on-surface-variant mb-1">Account ID (Phone ID, Page ID, or IG ID)</label>
-                            <input type="text" id="manualId" class="w-full p-3 rounded-xl border border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all text-on-surface" placeholder="e.g. 1234567890">
-                        </div>
-                        <button type="submit" class="w-full py-3 bg-surface-container text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-all border border-outline-variant/30">
-                            Save Connection
+        <div class="max-w-3xl mx-auto space-y-6">
+
+            <!-- FACEBOOK MESSENGER CARD -->
+            <div class="platform-card bg-white rounded-3xl border border-outline-variant/20 shadow-sm p-8">
+                <div class="flex items-start gap-5">
+                    <div class="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="#0084FF">
+                            <path
+                                d="M12 2C6.477 2 2 6.145 2 11.243c0 2.914 1.457 5.516 3.738 7.224V22l3.405-1.87c.909.252 1.872.387 2.857.387 5.523 0 10-4.145 10-9.257S17.523 2 12 2zm1.033 12.462l-2.54-2.71-4.961 2.71 5.455-5.79 2.608 2.71 4.893-2.71-5.455 5.79z" />
+                        </svg>
+                    </div>
+                    <div class="flex-grow">
+                        <h2 class="text-xl font-headline font-bold text-on-surface">Facebook Messenger</h2>
+                        <p class="text-on-surface-variant text-sm mt-1">Connect your Facebook Page. The AI will
+                            auto-reply to anyone who messages your page.</p>
+                        <button id="connectMessengerBtn" onclick="startFBLogin('messenger')"
+                            class="mt-4 px-6 py-3 bg-[#0084FF] text-white font-semibold rounded-xl hover:bg-blue-600 transition-all flex items-center gap-2 text-sm">
+                            <span class="material-symbols-outlined text-base">login</span>
+                            Connect with Facebook
                         </button>
-                    </form>
+                    </div>
                 </div>
-
-                <button id="toggleManualBtn" class="text-sm font-semibold text-primary hover:underline mt-4">Can't login? Use manual setup</button>
             </div>
 
-            <!-- Connected Accounts List -->
+            <!-- INSTAGRAM CARD -->
+            <div class="platform-card bg-white rounded-3xl border border-outline-variant/20 shadow-sm p-8">
+                <div class="flex items-start gap-5">
+                    <div class="w-14 h-14 rounded-2xl bg-pink-50 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="url(#ig-grad)">
+                            <defs>
+                                <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#f09433" />
+                                    <stop offset="25%" style="stop-color:#e6683c" />
+                                    <stop offset="50%" style="stop-color:#dc2743" />
+                                    <stop offset="75%" style="stop-color:#cc2366" />
+                                    <stop offset="100%" style="stop-color:#bc1888" />
+                                </linearGradient>
+                            </defs>
+                            <path
+                                d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                        </svg>
+                    </div>
+                    <div class="flex-grow">
+                        <h2 class="text-xl font-headline font-bold text-on-surface">Instagram DMs</h2>
+                        <p class="text-on-surface-variant text-sm mt-1">Connect your Instagram Professional account. The
+                            AI will auto-reply to your DMs. Your Instagram must be linked to a Facebook Page.</p>
+                        <button id="connectInstagramBtn" onclick="startFBLogin('instagram')"
+                            class="mt-4 px-6 py-3 text-white font-semibold rounded-xl transition-all flex items-center gap-2 text-sm"
+                            style="background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)">
+                            <span class="material-symbols-outlined text-base">login</span>
+                            Connect with Instagram
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WHATSAPP CARD -->
+            <div class="platform-card bg-white rounded-3xl border border-outline-variant/20 shadow-sm p-8">
+                <div class="flex items-start gap-5">
+                    <div class="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="#25D366">
+                            <path
+                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                    </div>
+                    <div class="flex-grow">
+                        <h2 class="text-xl font-headline font-bold text-on-surface">WhatsApp Business</h2>
+                        <p class="text-on-surface-variant text-sm mt-1">Paste your WhatsApp Access Token and Phone
+                            Number ID from the Meta Developer Dashboard to enable AI replies on WhatsApp.</p>
+                        <button onclick="document.getElementById('whatsappForm').classList.toggle('hidden')"
+                            class="mt-4 px-6 py-3 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-green-600 transition-all flex items-center gap-2 text-sm">
+                            <span class="material-symbols-outlined text-base">settings</span>
+                            Configure WhatsApp
+                        </button>
+                        <form id="whatsappForm" class="hidden mt-5 space-y-4 border-t border-outline-variant/20 pt-5">
+                            <div>
+                                <label class="block text-sm font-semibold text-on-surface-variant mb-1">WhatsApp Access
+                                    Token</label>
+                                <input type="text" id="waToken"
+                                    class="w-full p-3 rounded-xl border border-outline-variant bg-surface focus:ring-2 focus:ring-primary transition-all text-on-surface text-sm"
+                                    placeholder="EAA...long token...">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-on-surface-variant mb-1">Phone Number ID
+                                    <span class="font-normal text-xs">(found in Meta Dev Dashboard → WhatsApp → API
+                                        Setup)</span></label>
+                                <input type="text" id="waPhoneId"
+                                    class="w-full p-3 rounded-xl border border-outline-variant bg-surface focus:ring-2 focus:ring-primary transition-all text-on-surface text-sm"
+                                    placeholder="e.g. 123456789012345">
+                            </div>
+                            <button type="button" onclick="saveWhatsApp()"
+                                class="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-container transition-all">
+                                Save WhatsApp Connection
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connected Accounts -->
             <div class="bg-white rounded-3xl border border-outline-variant/20 shadow-sm p-8">
                 <h3 class="text-xl font-headline font-bold text-on-surface mb-6">Connected Platforms</h3>
                 <div id="connectionsList" class="space-y-4">
-                    <div class="text-center text-on-surface-variant py-4">Loading connections...</div>
+                    <div class="text-center text-on-surface-variant py-4 font-medium">Loading connections...</div>
                 </div>
             </div>
+
         </div>
     </main>
 
@@ -171,24 +262,33 @@
         const token = localStorage.getItem('token');
         if (!token) window.location.href = 'login.html';
 
-        const fbLoginBtn = document.getElementById('fbLoginBtn');
-        const manualSetupContainer = document.getElementById('manualSetupContainer');
-        const toggleManualBtn = document.getElementById('toggleManualBtn');
-        const manualConnectForm = document.getElementById('manualConnectForm');
-        const connectionsList = document.getElementById('connectionsList');
-
-        document.getElementById('logoutBtn').addEventListener('click', (e) => {
-            e.preventDefault();
+        // Mobile nav
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.remove('-translate-x-full');
+            document.getElementById('overlay').classList.remove('hidden');
+        });
+        document.getElementById('closeMenuBtn').addEventListener('click', closeMobileMenu);
+        document.getElementById('overlay').addEventListener('click', closeMobileMenu);
+        function closeMobileMenu() {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('overlay').classList.add('hidden');
+        }
+        document.getElementById('logoutBtn').addEventListener('click', () => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'login.html';
         });
 
-        toggleManualBtn.addEventListener('click', () => {
-            manualSetupContainer.classList.toggle('hidden');
-        });
+        // Toast helper
+        function showToast(msg, success = true) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `fixed top-6 right-6 z-[100] px-6 py-4 rounded-2xl shadow-xl font-semibold text-white text-sm ${success ? 'bg-green-500' : 'bg-red-500'}`;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 4000);
+        }
 
-        // Initialize Facebook SDK
+        // --- Facebook SDK ---
         async function loadMetaConfig() {
             try {
                 const res = await fetch('/api/meta/config', {
@@ -196,125 +296,130 @@
                 });
                 const data = await res.json();
                 if (data.appId && data.appId !== 'your_meta_app_id') {
-                    window.fbAsyncInit = function() {
-                        FB.init({
-                            appId      : data.appId,
-                            cookie     : true,
-                            xfbml      : true,
-                            version    : 'v19.0'
-                        });
+                    window.fbAsyncInit = function () {
+                        FB.init({ appId: data.appId, cookie: true, xfbml: true, version: 'v19.0' });
                     };
                     const s = document.createElement('script');
                     s.src = "https://connect.facebook.net/en_US/sdk.js";
                     document.head.appendChild(s);
                 } else {
-                    console.log("Meta App ID not configured.");
-                    fbLoginBtn.textContent = "Facebook Login Unavailable (Check .env)";
-                    fbLoginBtn.disabled = true;
+                    // Disable auto-connect buttons if app id not set
+                    document.getElementById('connectMessengerBtn').disabled = true;
+                    document.getElementById('connectMessengerBtn').textContent = 'Configure Meta App ID in .env first';
+                    document.getElementById('connectInstagramBtn').disabled = true;
+                    document.getElementById('connectInstagramBtn').textContent = 'Configure Meta App ID in .env first';
                 }
-            } catch (err) {
-                console.error("Failed to load config", err);
-            }
+            } catch (err) { console.error("Failed to load config", err); }
         }
-        
         loadMetaConfig();
         loadConnections();
 
-        fbLoginBtn.addEventListener('click', () => {
-            if (typeof FB === 'undefined') return alert('Facebook SDK not loaded. Ensure your Meta App ID is in the .env file and restart the server.');
-            
-            // Facebook Login for Business requires specific setup in the App Dashboard.
-            // For MVP, we ask the user to manually enter their selected IDs after logging in.
-            FB.login(function(response) {
+        // --- One-click Facebook Login for Messenger or Instagram ---
+        function startFBLogin(platform) {
+            if (typeof FB === 'undefined') {
+                return showToast('Facebook SDK not loaded. Check your Meta App ID in .env', false);
+            }
+
+            const btnId = platform === 'messenger' ? 'connectMessengerBtn' : 'connectInstagramBtn';
+            const btn = document.getElementById(btnId);
+            btn.innerHTML = `<svg class="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"></svg> Connecting...`;
+            btn.disabled = true;
+
+            FB.login(async function (response) {
                 if (response.authResponse) {
                     const accessToken = response.authResponse.accessToken;
-                    alert("Facebook connected! For this MVP version, please use the manual setup below to paste your account IDs and Token.");
-                    manualSetupContainer.classList.remove('hidden');
-                    document.getElementById('manualToken').value = accessToken;
+                    try {
+                        const res = await fetch('/api/meta/exchange-token', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ accessToken, platform })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            showToast(`✅ ${data.message}`, true);
+                            loadConnections();
+                        } else {
+                            showToast(`❌ ${data.message}`, false);
+                        }
+                    } catch (err) {
+                        showToast('Connection failed. Try again.', false);
+                    }
                 } else {
-                    console.log('User cancelled login or did not fully authorize.');
+                    showToast('Facebook login was cancelled.', false);
                 }
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined text-base">login</span> Connect with ${platform === 'messenger' ? 'Facebook' : 'Instagram'}`;
             }, {
-                config_id: 'OPTIONAL_CONFIG_ID_FOR_FB_LOGIN_FOR_BUSINESS' // Must be configured in App Dashboard
+                scope: 'pages_messaging,pages_show_list,pages_read_engagement,instagram_manage_messages,instagram_basic,business_management'
             });
-        });
+        }
 
-        manualConnectForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const platform = document.getElementById('manualPlatform').value;
-            const access_token = document.getElementById('manualToken').value;
-            const account_id = document.getElementById('manualId').value;
-
-            if (!access_token || !account_id) return alert('Please enter token and account ID');
+        // --- Manual WhatsApp Save ---
+        async function saveWhatsApp() {
+            const access_token = document.getElementById('waToken').value.trim();
+            const account_id = document.getElementById('waPhoneId').value.trim();
+            if (!access_token || !account_id) return showToast('Please fill in both fields.', false);
 
             try {
                 const res = await fetch('/api/meta/connect', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ platform, access_token, account_id })
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ platform: 'whatsapp', access_token, account_id })
                 });
-                
+                const data = await res.json();
                 if (res.ok) {
-                    alert('Connection saved successfully!');
-                    document.getElementById('manualId').value = '';
+                    showToast('✅ WhatsApp connected successfully!', true);
+                    document.getElementById('waToken').value = '';
+                    document.getElementById('waPhoneId').value = '';
+                    document.getElementById('whatsappForm').classList.add('hidden');
                     loadConnections();
                 } else {
-                    const data = await res.json();
-                    alert(`Error: ${data.message}`);
+                    showToast(`❌ ${data.message}`, false);
                 }
             } catch (err) {
-                console.error(err);
-                alert('Failed to connect.');
+                showToast('Failed to save WhatsApp connection.', false);
             }
-        });
+        }
 
+        // --- Load Connected Accounts ---
         async function loadConnections() {
             try {
-                const res = await fetch('/api/meta/status', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const res = await fetch('/api/meta/status', { headers: { 'Authorization': `Bearer ${token}` } });
                 const connections = await res.json();
-                
+                const list = document.getElementById('connectionsList');
+
                 if (!connections || connections.length === 0) {
-                    connectionsList.innerHTML = `<div class="text-center text-on-surface-variant py-4 font-medium">No platforms connected yet.</div>`;
+                    list.innerHTML = `<div class="text-center text-on-surface-variant py-6 font-medium">No platforms connected yet. Connect a platform above to get started.</div>`;
                     return;
                 }
 
-                connectionsList.innerHTML = connections.map(conn => `
-                    <div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant/20">
+                const icons = { whatsapp: '💬', messenger: '📘', instagram: '📸' };
+                const colors = { whatsapp: 'bg-green-50 text-green-700', messenger: 'bg-blue-50 text-blue-700', instagram: 'bg-pink-50 text-pink-700' };
+
+                list.innerHTML = connections.map(conn => `
+                    <div class="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl border border-outline-variant/20">
                         <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                                <span class="material-symbols-outlined">${getIconForPlatform(conn.platform)}</span>
+                            <div class="w-11 h-11 rounded-xl ${colors[conn.platform] || 'bg-gray-100'} flex items-center justify-center text-xl">
+                                ${icons[conn.platform] || '🔗'}
                             </div>
-                            <div class="text-left">
+                            <div>
                                 <div class="font-bold text-on-surface capitalize">${conn.platform}</div>
-                                <div class="text-xs font-medium text-on-surface-variant">ID: ${conn.account_id}</div>
+                                <div class="text-xs text-on-surface-variant">ID: ${conn.account_id}</div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-4">
-                            <span class="px-2.5 py-1 text-xs font-bold uppercase tracking-widest bg-green-100 text-green-700 rounded-lg">Connected</span>
-                            <button onclick="disconnectPlatform('${conn.platform}')" class="p-2 text-error hover:bg-error-container/10 rounded-lg transition-all" title="Disconnect">
+                        <div class="flex items-center gap-3">
+                            <span class="px-3 py-1 text-xs font-bold uppercase tracking-widest bg-green-100 text-green-700 rounded-lg">● Active</span>
+                            <button onclick="disconnectPlatform('${conn.platform}')" class="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Disconnect">
                                 <span class="material-symbols-outlined text-sm">delete</span>
                             </button>
                         </div>
                     </div>
                 `).join('');
-
             } catch (err) {
-                console.error('Error loading connections:', err);
-                connectionsList.innerHTML = `<div class="text-center text-error py-4">Failed to load connections.</div>`;
-            }
-        }
-
-        function getIconForPlatform(platform) {
-            switch(platform) {
-                case 'whatsapp': return 'chat';
-                case 'messenger': return 'forum';
-                case 'instagram': return 'photo_camera';
-                default: return 'public';
+                document.getElementById('connectionsList').innerHTML = `<div class="text-center text-red-400 py-4">Failed to load connections.</div>`;
             }
         }
 
@@ -323,19 +428,15 @@
             try {
                 await fetch('/api/meta/disconnect', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ platform })
                 });
+                showToast(`${platform} disconnected.`, true);
                 loadConnections();
-            } catch (err) {
-                console.error(err);
-                alert('Failed to disconnect');
-            }
+            } catch (err) { showToast('Failed to disconnect.', false); }
         }
     </script>
     <script src="js/ui.js"></script>
 </body>
+
 </html>
