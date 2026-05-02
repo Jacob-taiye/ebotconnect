@@ -33,7 +33,7 @@ async function generateAIReply(businessInfo, userMessage) {
                 'Content-Type': 'application/json'
             }
         });
-        
+
         return groqRes.data.choices[0].message.content;
     } catch (err) {
         console.error("Groq AI Error:", err.response?.data || err.message);
@@ -78,7 +78,7 @@ async function processBotLogic(platform, accountId, senderId, messageText) {
     try {
         // 1. Find the user connected to this account_id
         const [connections] = await db.execute(
-            'SELECT user_id, access_token FROM social_connections WHERE account_id = ? AND platform = ? AND status = "connected"',
+            "SELECT user_id, access_token FROM social_connections WHERE account_id = ? AND platform = ? AND status = 'connected'",
             [accountId, platform]
         );
 
@@ -117,7 +117,7 @@ async function processBotLogic(platform, accountId, senderId, messageText) {
 
         // 6. Update Database
         await db.execute('UPDATE messages SET bot_reply = ? WHERE id = ?', [aiReply, msgId]);
-        
+
         // 7. Notify Frontend Dashboard (if socket is connected)
         try {
             const { io } = require('../server');
