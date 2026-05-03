@@ -23,7 +23,7 @@ router.post('/logout', authenticateToken, async (req, res) => {
     const userId = parseInt(req.user.userId);
     try {
         console.log(`Resetting WhatsApp session for user ${userId}...`);
-        
+
         // 1. Close session in memory if exists
         if (sessions.has(userId)) {
             try {
@@ -35,7 +35,7 @@ router.post('/logout', authenticateToken, async (req, res) => {
             }
             sessions.delete(userId);
         }
-        
+
         // 2. Clear session files from folder
         const sessionPath = path.join(__dirname, `../sessions/user_${userId}`);
         if (fs.existsSync(sessionPath)) {
@@ -44,7 +44,7 @@ router.post('/logout', authenticateToken, async (req, res) => {
         }
 
         // 3. Update database status
-        await db.execute('UPDATE whatsapp_sessions SET status = "disconnected" WHERE user_id = ?', [userId]);
+        await db.execute('UPDATE whatsapp_sessions SET status = ? WHERE user_id = ?', ['disconnected', userId]);
 
         res.json({ message: "Logged out successfully" });
     } catch (error) {
