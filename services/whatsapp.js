@@ -99,8 +99,8 @@ async function initializeWhatsApp(userId, io) {
                     setTimeout(() => initializeWhatsApp(uId, io), 5000);
                 } else {
                     console.log(`[SESSION] Fatal connection error for user ${uId}. Stopping bot.`);
-                    await db.execute('UPDATE whatsapp_sessions SET status = "disconnected" WHERE user_id = ?', [uId]);
-                    await db.execute('UPDATE social_connections SET status = "disconnected" WHERE user_id = ? AND platform = "whatsapp"', [uId]);
+                    await db.execute('UPDATE whatsapp_sessions SET status = ? WHERE user_id = ?', ['disconnected', uId]);
+                    await db.execute('UPDATE social_connections SET status = ? WHERE user_id = ? AND platform = ?', ['disconnected', uId, 'whatsapp']);
                     io.to(`user_${uId}`).emit('status', 'disconnected');
                 }
             } else if (connection === 'open') {
@@ -110,16 +110,16 @@ async function initializeWhatsApp(userId, io) {
 
                 // Update whatsapp_sessions table
                 await db.execute(
-                    'INSERT INTO whatsapp_sessions (user_id, status, connected_at) VALUES (?, "connected", NOW()) ON DUPLICATE KEY UPDATE status="connected", connected_at=NOW()',
-                    [uId]
+                    'INSERT INTO whatsapp_sessions (user_id, status, connected_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE status=?, connected_at=NOW()',
+                    [uId, 'connected', 'connected']
                 );
 
                 // Sync with social_connections table for the frontend list
                 await db.execute(
                     `INSERT INTO social_connections (user_id, platform, account_id, status, connected_at)
-                     VALUES (?, 'whatsapp', ?, 'connected', NOW())
-                     ON DUPLICATE KEY UPDATE account_id = ?, status = 'connected', connected_at = NOW()`,
-                    [uId, userNumber, userNumber]
+                     VALUES (?, ?, ?, ?, NOW())
+                     ON DUPLICATE KEY UPDATE account_id = ?, status = ?, connected_at = NOW()`,
+                    [uId, 'whatsapp', userNumber, 'connected', userNumber, 'connected']
                 );
 
                 console.log(`[SESSION] Emitting connected status to user_${uId}`);
