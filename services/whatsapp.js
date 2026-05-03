@@ -66,157 +66,173 @@ async function initializeWhatsApp(userId, io) {
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        try {
+            const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
-            console.log(`[SESSION] QR Generated for user ${uId}`);
-            const qrDataUrl = await qrcode.toDataURL(qr);
-            io.to(`user_${uId}`).emit('qr', qrDataUrl);
-        }
-
-        if (connection === 'close') {
-            initializing.delete(uId);
-            const error = lastDisconnect?.error;
-            const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
-
-            const isFatal = [
-                DisconnectReason.loggedOut,
-                401,
-                409,
-                'Stream Errored (unknown)',
-                'Stream Errored (conflict)'
-            ].includes(statusCode);
-
-            console.log(`[SESSION] Connection closed for user ${uId}. Error: ${statusCode}. Fatal: ${isFatal}`);
-
-            sessions.delete(uId);
-
-            if (!isFatal) {
-                console.log(`[SESSION] Recoverable error. Reconnecting in 5s for user ${uId}...`);
-                setTimeout(() => initializeWhatsApp(uId, io), 5000);
-            } else {
-                console.log(`[SESSION] Fatal connection error for user ${uId}. Stopping bot.`);
-                await db.execute('UPDATE whatsapp_sessions SET status = "disconnected" WHERE user_id = ?', [uId]);
-                io.to(`user_${uId}`).emit('status', 'disconnected');
+            if (qr) {
+                console.log(`[SESSION] QR Generated for user ${uId}`);
+                const qrDataUrl = await qrcode.toDataURL(qr);
+                io.to(`user_${uId}`).emit('qr', qrDataUrl);
             }
-        } else if (connection === 'open') {
-            initializing.delete(uId);
-            console.log(`[SESSION] WhatsApp Connected for user ${uId}`);
-            await db.execute(
-                'INSERT INTO whatsapp_sessions (user_id, status, connected_at) VALUES (?, "connected", NOW()) ON DUPLICATE KEY UPDATE status="connected", connected_at=NOW()',
-                [uId]
-            );
-            io.to(`user_${uId}`).emit('status', 'connected');
+
+            if (connection === 'close') {
+                initializing.delete(uId);
+                const error = lastDisconnect?.error;
+                const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
+
+                const isFatal = [
+                    DisconnectReason.loggedOut,
+                    401,
+                    409,
+                    'Stream Errored (unknown)',
+                    'Stream Errored (conflict)'
+                ].includes(statusCode);
+
+                console.log(`[SESSION] Connection closed for user ${uId}. Error: ${statusCode}. Fatal: ${isFatal}`);
+
+                sessions.delete(uId);
+
+                if (!isFatal) {
+                    console.log(`[SESSION] Recoverable error. Reconnecting in 5s for user ${uId}...`);
+                    setTimeout(() => initializeWhatsApp(uId, io), 5000);
+                } else {
+                    console.log(`[SESSION] Fatal connection error for user ${uId}. Stopping bot.`);
+                    await db.execute('UPDATE whatsapp_sessions SET status = "disconnected" WHERE user_id = ?', [uId]);
+                    await db.execute('UPDATE social_connections SET status = "disconnected" WHERE user_id = ? AND platform = "whatsapp"', [uId]);
+                    io.to(`user_${uId}`).emit('status', 'disconnected');
+                }
+            } else if (connection === 'open') {
+                initializing.delete(uId);
+                const userNumber = sock.user.id.split(':')[0];
+                console.log(`[SESSION] WhatsApp Connected for user ${uId} (${userNumber})`);
+
+                // Update whatsapp_sessions table
+                await db.execute(
+                    'INSERT INTO whatsapp_sessions (user_id, status, connected_at) VALUES (?, "connected", NOW()) ON DUPLICATE KEY UPDATE status="connected", connected_at=NOW()',
+                    [uId]
+                );
+
+                // Sync with social_connections table for the frontend list
+                await db.execute(
+                    `INSERT INTO social_connections (user_id, platform, account_id, status, connected_at)
+                     VALUES (?, 'whatsapp', ?, 'connected', NOW())
+                     ON DUPLICATE KEY UPDATE account_id = ?, status = 'connected', connected_at = NOW()`,
+                    [uId, userNumber, userNumber]
+                );
+
+                io.to(`user_${uId}`).emit('status', 'connected');
+            }
+        } catch (err) {
+            console.error(`[SESSION ERROR] User ${uId} connection update failure:`, err);
         }
     });
 
     sock.ev.on('messages.upsert', async (m) => {
-        const currentUserId = parseInt(uId);
-        if (m.type !== 'notify') return;
+        try {
+            const currentUserId = parseInt(uId);
+            if (m.type !== 'notify') return;
 
-        const msg = m.messages[0];
-        if (!msg.message) return;
+            const msg = m.messages[0];
+            if (!msg.message) return;
 
-        const remoteJid = msg.key.remoteJid;
-        if (remoteJid.endsWith('@g.us')) return;
+            const remoteJid = msg.key.remoteJid;
+            if (remoteJid.endsWith('@g.us')) return;
 
-        // --- 1. CRITICAL TOGGLE CHECK FIRST ---
-        const [bizInfo] = await db.execute(`
-            SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
-            FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
-            ORDER BY b.id DESC LIMIT 1`,
-            [currentUserId]
-        );
+            // --- 1. CRITICAL TOGGLE CHECK FIRST ---
+            const [bizInfo] = await db.execute(`
+                SELECT b.is_active, u.business_name, b.description, b.products, b.prices, b.faqs, b.working_hours, b.welcome_message, b.auto_reply_message 
+                FROM business_info b JOIN users u ON b.user_id = u.id WHERE b.user_id = ? 
+                ORDER BY b.id DESC LIMIT 1`,
+                [currentUserId]
+            );
 
-        if (!bizInfo || bizInfo.length === 0 || bizInfo[0].is_active !== 1) {
-            return; // Exit immediately if bot is toggled OFF
-        }
-        const biz = bizInfo[0];
-        console.log(`[DEBUG] [USER ${currentUserId}] Business Context Loaded:`, {
-            name: biz.business_name,
-            desc: !!biz.description,
-            products: !!biz.products,
-            active: biz.is_active
-        });
-
-        const pendingKey = `${currentUserId}:${remoteJid}`;
-
-        // If the business owner (me) sends a message, cancel any pending bot response
-        if (msg.key.fromMe) {
-            if (pendingBots.has(pendingKey)) {
-                console.log(`[BOT_CANCEL] Manual reply. Cancelling bot.`);
-                clearTimeout(pendingBots.get(pendingKey));
-                pendingBots.delete(pendingKey);
+            if (!bizInfo || bizInfo.length === 0 || bizInfo[0].is_active !== 1) {
+                return; // Exit immediately if bot is toggled OFF
             }
-            return;
-        }
+            const biz = bizInfo[0];
+            console.log(`[DEBUG] [USER ${currentUserId}] Message received from ${remoteJid}`);
 
-        // --- 2. DELAY LOGIC (First Message Only) ---
-        // Check if we've talked to this person in the last 30 minutes
-        const [recentLogs] = await db.execute(
-            'SELECT id FROM messages WHERE user_id = ? AND customer_number = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1',
-            [currentUserId, remoteJid.split('@')[0]]
-        );
+            const pendingKey = `${currentUserId}:${remoteJid}`;
 
-        const isFirstMessage = recentLogs.length === 0;
-
-        // Helper function to execute bot reply
-        const executeBotReply = async () => {
-            try {
-                if (!sessions.has(currentUserId)) return;
-
-                let body = "";
-                if (msg.message.conversation) body = msg.message.conversation;
-                else if (msg.message.extendedTextMessage) body = msg.message.extendedTextMessage.text;
-                else if (msg.message.imageMessage && msg.message.imageMessage.caption) body = msg.message.imageMessage.caption;
-                else if (msg.message.videoMessage && msg.message.videoMessage.caption) body = msg.message.videoMessage.caption;
-
-                if (!body) return;
-
-                // Final Subscription Check
-                const [subs] = await db.execute(
-                    'SELECT status FROM subscriptions WHERE user_id = ? AND status = "active" AND expiry_date > NOW()',
-                    [currentUserId]
-                );
-                if (!subs || subs.length === 0) return;
-
-                console.log(`[BOT_REPLY] Generating reply for ${remoteJid}...`);
-                const replyText = await generateAIReply(body, biz);
-
-                await sock.sendPresenceUpdate('composing', remoteJid);
-                setTimeout(async () => {
-                    try {
-                        await sock.sendMessage(remoteJid, { text: replyText });
-                        await db.execute(
-                            'INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
-                            [currentUserId, remoteJid.split('@')[0], body, replyText]
-                        );
-                    } catch (err) {
-                        console.error(`[ERROR] Send failed:`, err.message);
-                    }
-                }, 2000);
-            } catch (err) {
-                console.error(`[FATAL] Bot Error:`, err);
-            }
-        };
-
-        if (isFirstMessage) {
-            // It's the first message: apply 2-minute delay
-            if (pendingBots.has(pendingKey)) {
-                clearTimeout(pendingBots.get(pendingKey));
+            // If the business owner (me) sends a message, cancel any pending bot response
+            if (msg.key.fromMe) {
+                if (pendingBots.has(pendingKey)) {
+                    console.log(`[BOT_CANCEL] Manual reply. Cancelling bot.`);
+                    clearTimeout(pendingBots.get(pendingKey));
+                    pendingBots.delete(pendingKey);
+                }
+                return;
             }
 
-            console.log(`[BOT_SCHEDULED] First message from ${remoteJid}. Waiting 2 mins.`);
-            const timeoutId = setTimeout(() => {
-                pendingBots.delete(pendingKey);
+            // --- 2. DELAY LOGIC (First Message Only) ---
+            // Check if we've talked to this person in the last 30 minutes
+            const [recentLogs] = await db.execute(
+                'SELECT id FROM messages WHERE user_id = ? AND customer_number = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1',
+                [currentUserId, remoteJid.split('@')[0]]
+            );
+
+            const isFirstMessage = recentLogs.length === 0;
+
+            // Helper function to execute bot reply
+            const executeBotReply = async () => {
+                try {
+                    if (!sessions.has(currentUserId)) return;
+
+                    let body = "";
+                    if (msg.message.conversation) body = msg.message.conversation;
+                    else if (msg.message.extendedTextMessage) body = msg.message.extendedTextMessage.text;
+                    else if (msg.message.imageMessage && msg.message.imageMessage.caption) body = msg.message.imageMessage.caption;
+                    else if (msg.message.videoMessage && msg.message.videoMessage.caption) body = msg.message.videoMessage.caption;
+
+                    if (!body) return;
+
+                    // Final Subscription Check
+                    const [subs] = await db.execute(
+                        'SELECT status FROM subscriptions WHERE user_id = ? AND status = "active" AND expiry_date > NOW()',
+                        [currentUserId]
+                    );
+                    if (!subs || subs.length === 0) return;
+
+                    console.log(`[BOT_REPLY] Generating reply for ${remoteJid}...`);
+                    const replyText = await generateAIReply(body, biz);
+
+                    await sock.sendPresenceUpdate('composing', remoteJid);
+                    setTimeout(async () => {
+                        try {
+                            await sock.sendMessage(remoteJid, { text: replyText });
+                            await db.execute(
+                                'INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
+                                [currentUserId, remoteJid.split('@')[0], body, replyText]
+                            );
+                        } catch (err) {
+                            console.error(`[ERROR] Send failed:`, err.message);
+                        }
+                    }, 2000);
+                } catch (err) {
+                    console.error(`[FATAL] Bot Error during reply:`, err);
+                }
+            };
+
+            if (isFirstMessage) {
+                // It's the first message: apply 2-minute delay
+                if (pendingBots.has(pendingKey)) {
+                    clearTimeout(pendingBots.get(pendingKey));
+                }
+
+                console.log(`[BOT_SCHEDULED] First message from ${remoteJid}. Waiting 2 mins.`);
+                const timeoutId = setTimeout(() => {
+                    pendingBots.delete(pendingKey);
+                    executeBotReply();
+                }, 120000);
+
+                pendingBots.set(pendingKey, timeoutId);
+            } else {
+                // Not the first message: reply immediately
+                console.log(`[BOT_FAST] Continuing conversation with ${remoteJid}.`);
                 executeBotReply();
-            }, 120000);
-
-            pendingBots.set(pendingKey, timeoutId);
-        } else {
-            // Not the first message: reply immediately
-            console.log(`[BOT_FAST] Continuing conversation with ${remoteJid}.`);
-            executeBotReply();
+            }
+        } catch (err) {
+            console.error(`[MESSAGES ERROR] User ${uId} message processing failure:`, err);
         }
     });
 
