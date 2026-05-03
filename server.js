@@ -45,9 +45,9 @@ io.on('connection', (socket) => {
       try {
         const userId = room.replace('user_', '');
         const [rows] = await db.execute('SELECT status FROM whatsapp_sessions WHERE user_id = ?', [userId]);
-        if (rows.length > 0) {
-          socket.emit('status', rows[0].status);
-        }
+        const currentStatus = rows.length > 0 ? rows[0].status : 'disconnected';
+        console.log(`[SOCKET] Sending initial status (${currentStatus}) to user ${userId}`);
+        socket.emit('status', currentStatus);
       } catch (err) {
         console.error('[SOCKET ERROR] Failed to fetch initial status:', err.message);
       }
@@ -219,7 +219,7 @@ const { initializeWhatsApp } = require('./services/whatsapp');
 const startWhatsAppSessions = async () => {
   try {
     const [rows] = await db.execute('SELECT user_id FROM whatsapp_sessions WHERE status = "connected"');
-    console.log(`[BOOT] Resuming ${rows.length} WhatsApp sessions...`);
+    console.log(`[BOOT] Resuming ${rows.length} WhatsApp sessions:`, rows.map(r => r.user_id));
     for (const row of rows) {
       initializeWhatsApp(row.user_id, io);
     }
