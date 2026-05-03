@@ -295,17 +295,30 @@
         // --- Facebook SDK ---
         // --- Socket.io Logic for WhatsApp QR ---
         const user = JSON.parse(localStorage.getItem('user'));
-        const socket = io();
+        const socket = io({
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000
+        });
 
-        socket.emit('join', `user_${user.id}`);
+        socket.on('connect', () => {
+            console.log('Connected to Socket.io server');
+            socket.emit('join', `user_${user.id}`);
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Socket.io Connection Error:', error);
+        });
 
         socket.on('qr', (qrCode) => {
+            console.log('Received WhatsApp QR Code');
             document.getElementById('qrImage').src = qrCode;
             document.getElementById('qrContainer').classList.remove('hidden');
             document.getElementById('waStartBtn').classList.add('hidden');
         });
 
         socket.on('status', (status) => {
+            console.log('WhatsApp Status Update:', status);
             if (status === 'connected') {
                 document.getElementById('waStatusArea').classList.remove('hidden');
                 document.getElementById('waConnectArea').classList.add('hidden');
