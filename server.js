@@ -11,8 +11,13 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Add this BEFORE your other routes
@@ -29,8 +34,19 @@ app.set('socketio', io);
 
 // Socket.io Connection Logic
 io.on('connection', (socket) => {
+  console.log(`[SOCKET] New connection: ${socket.id}`);
+
   socket.on('join', (room) => {
+    console.log(`[SOCKET] Socket ${socket.id} joining room: ${room}`);
     socket.join(room);
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log(`[SOCKET] Socket ${socket.id} disconnected. Reason: ${reason}`);
+  });
+
+  socket.on('error', (error) => {
+    console.error(`[SOCKET] Socket ${socket.id} error:`, error);
   });
 });
 
@@ -174,9 +190,9 @@ server.listen(PORT, () => {
 });
 
 // Catch-all route to serve index.html for any non-API requests
-app.use((req, res) => {
+app.get('*', (req, res) => {
   // If the request is for an API or has an extension (like .js, .css), don't serve index.html
-  if (req.path.startsWith('/api/') || req.path.includes('.')) {
+  if (req.path.startsWith('/api/') || req.path.includes('/socket.io/') || req.path.includes('.')) {
     return res.status(404).json({ message: "Not found" });
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
