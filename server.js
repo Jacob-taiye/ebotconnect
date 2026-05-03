@@ -36,9 +36,22 @@ app.set('socketio', io);
 io.on('connection', (socket) => {
   console.log(`[SOCKET] New connection: ${socket.id}`);
 
-  socket.on('join', (room) => {
+  socket.on('join', async (room) => {
     console.log(`[SOCKET] Socket ${socket.id} joining room: ${room}`);
     socket.join(room);
+
+    // If joining a user room, send current WhatsApp status immediately
+    if (room.startsWith('user_')) {
+      try {
+        const userId = room.replace('user_', '');
+        const [rows] = await db.execute('SELECT status FROM whatsapp_sessions WHERE user_id = ?', [userId]);
+        if (rows.length > 0) {
+          socket.emit('status', rows[0].status);
+        }
+      } catch (err) {
+        console.error('[SOCKET ERROR] Failed to fetch initial status:', err.message);
+      }
+    }
   });
 
   socket.on('disconnect', (reason) => {
