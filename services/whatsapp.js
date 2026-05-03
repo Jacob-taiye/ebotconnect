@@ -191,8 +191,8 @@ async function initializeWhatsApp(userId, io) {
 
                     // Final Subscription Check
                     const [subs] = await db.execute(
-                        'SELECT status FROM subscriptions WHERE user_id = ? AND status = "active" AND expiry_date > NOW()',
-                        [currentUserId]
+                        'SELECT status FROM subscriptions WHERE user_id = ? AND status = ? AND expiry_date > NOW()',
+                        [currentUserId, 'active']
                     );
                     if (!subs || subs.length === 0) return;
 
