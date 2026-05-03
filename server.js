@@ -90,6 +90,15 @@ app.use('/api/whatsapp', whatsappRoutes);
 const initializeDatabase = async () => {
   const db = require('./config/db');
 
+  // --- Nuclear Schema Fix for Legacy Tables ---
+  try {
+    const [cols] = await db.execute("SHOW COLUMNS FROM whatsapp_sessions LIKE 'session_key'");
+    if (cols.length > 0) {
+      console.log('! Legacy whatsapp_sessions detected. Recreating table to fix schema...');
+      await db.execute('DROP TABLE whatsapp_sessions');
+    }
+  } catch (e) { /* Table doesn't exist yet, which is fine */ }
+
   // 1. Core Tables Setup
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, business_name VARCHAR(255), email VARCHAR(255) UNIQUE, password VARCHAR(255), phone VARCHAR(20), address TEXT, logo VARCHAR(255), status ENUM('active', 'suspended') DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
@@ -104,12 +113,6 @@ const initializeDatabase = async () => {
 
   try {
     for (const sql of tables) { await db.execute(sql); }
-
-    // 1.5 Fix for legacy whatsapp_sessions tables that have an unused 'session_key' column
-    try {
-      await db.execute('ALTER TABLE whatsapp_sessions DROP COLUMN session_key');
-      console.log('✓ Cleaned up legacy session_key column');
-    } catch (e) { /* Column likely doesn't exist, safe to ignore */ }
 
     // 2. Setup for social_connections (Meta API)
     try {
