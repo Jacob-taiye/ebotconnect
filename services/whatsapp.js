@@ -58,16 +58,18 @@ async function initializeWhatsApp(userId, io) {
         logger: pino({ level: 'silent' }),
         browser: ['ebotconnect', 'Chrome', '1.0.0'],
         connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 0, // Prevent some timeout issues
     });
 
     sessions.set(uId, sock);
-    console.log(`[MAP] Added User ${uId} to sessions Map. Total sessions: ${sessions.size}`);
+    console.log(`[MAP] User ${uId} socket created. Total active: ${sessions.size}`);
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
         try {
             const { connection, lastDisconnect, qr } = update;
+            console.log(`[SESSION UPDATE] User ${uId}: connection=${connection}, hasQR=${!!qr}`);
 
             if (qr) {
                 console.log(`[SESSION] QR Generated for user ${uId}`);
@@ -103,8 +105,8 @@ async function initializeWhatsApp(userId, io) {
                 }
             } else if (connection === 'open') {
                 initializing.delete(uId);
-                const userNumber = sock.user.id.split(':')[0];
-                console.log(`[SESSION] WhatsApp Connected for user ${uId} (${userNumber})`);
+                const userNumber = sock.user?.id ? sock.user.id.split(':')[0] : 'unknown';
+                console.log(`[SESSION] WhatsApp Connected for user ${uId} (Number: ${userNumber})`);
 
                 // Update whatsapp_sessions table
                 await db.execute(
@@ -120,6 +122,7 @@ async function initializeWhatsApp(userId, io) {
                     [uId, userNumber, userNumber]
                 );
 
+                console.log(`[SESSION] Emitting connected status to user_${uId}`);
                 io.to(`user_${uId}`).emit('status', 'connected');
             }
         } catch (err) {
