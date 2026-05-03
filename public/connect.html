@@ -468,6 +468,17 @@
                 const connections = await res.json();
                 const list = document.getElementById('connectionsList');
 
+                // Update WhatsApp Card UI if connected
+                const waConnected = connections.some(c => c.platform === 'whatsapp' && c.status === 'connected');
+                if (waConnected) {
+                    document.getElementById('waStatusArea').classList.remove('hidden');
+                    document.getElementById('waConnectArea').classList.add('hidden');
+                    document.getElementById('qrContainer').classList.add('hidden');
+                } else {
+                    document.getElementById('waStatusArea').classList.add('hidden');
+                    document.getElementById('waConnectArea').classList.remove('hidden');
+                }
+
                 if (!connections || connections.length === 0) {
                     list.innerHTML = `<div class="text-center text-on-surface-variant py-6 font-medium">No platforms connected yet. Connect a platform above to get started.</div>`;
                     return;
