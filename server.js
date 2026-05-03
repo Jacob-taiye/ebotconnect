@@ -105,9 +105,10 @@ const initializeDatabase = async () => {
   try {
     for (const sql of tables) { await db.execute(sql); }
 
-    // 1.5 Fix for legacy whatsapp_sessions tables that might have mandatory 'session_key'
+    // 1.5 Fix for legacy whatsapp_sessions tables that have an unused 'session_key' column
     try {
-      await db.execute('ALTER TABLE whatsapp_sessions MODIFY session_key VARCHAR(255) DEFAULT NULL');
+      await db.execute('ALTER TABLE whatsapp_sessions DROP COLUMN session_key');
+      console.log('✓ Cleaned up legacy session_key column');
     } catch (e) { /* Column likely doesn't exist, safe to ignore */ }
 
     // 2. Setup for social_connections (Meta API)
