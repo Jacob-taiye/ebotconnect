@@ -224,7 +224,7 @@ module.exports = { app, server, io };
 const { initializeWhatsApp } = require('./services/whatsapp');
 const startWhatsAppSessions = async () => {
   try {
-    const [rows] = await db.execute('SELECT user_id FROM whatsapp_sessions WHERE status = "connected"');
+    const [rows] = await db.execute('SELECT user_id FROM whatsapp_sessions WHERE status = ?', ['connected']);
     console.log(`[BOOT] Resuming ${rows.length} WhatsApp sessions:`, rows.map(r => r.user_id));
     for (const row of rows) {
       initializeWhatsApp(row.user_id, io);
