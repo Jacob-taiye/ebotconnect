@@ -105,6 +105,11 @@ const initializeDatabase = async () => {
   try {
     for (const sql of tables) { await db.execute(sql); }
 
+    // 1.5 Fix for legacy whatsapp_sessions tables that might have mandatory 'session_key'
+    try {
+      await db.execute('ALTER TABLE whatsapp_sessions MODIFY session_key VARCHAR(255) DEFAULT NULL');
+    } catch (e) { /* Column likely doesn't exist, safe to ignore */ }
+
     // 2. Setup for social_connections (Meta API)
     try {
       await db.execute("SELECT status FROM social_connections LIMIT 1");
