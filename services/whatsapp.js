@@ -139,7 +139,7 @@ async function initializeWhatsApp(userId, io) {
             if (!msg.message) return;
 
             const remoteJid = msg.key.remoteJid;
-            if (remoteJid.endsWith('@g.us')) return;
+            if (remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return;
 
             // --- 1. CRITICAL TOGGLE CHECK FIRST ---
             const [bizInfo] = await db.execute(`
