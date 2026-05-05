@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
+
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <link rel="icon" type="image/jpeg" href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" type="image/jpeg"
+        href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
     <title>Message Logs | ebotconnect</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -40,16 +45,19 @@
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
+
         .active-nav {
             background-color: #00687b;
             color: white !important;
         }
     </style>
 </head>
+
 <body class="bg-surface font-body text-on-surface min-h-screen flex">
     <!-- Mobile Menu Button -->
     <div class="lg:hidden fixed top-4 left-4 z-[60]">
-        <button id="menuBtn" class="p-3 bg-white border border-outline-variant/30 rounded-xl shadow-sm flex items-center justify-center text-primary">
+        <button id="menuBtn"
+            class="p-3 bg-white border border-outline-variant/30 rounded-xl shadow-sm flex items-center justify-center text-primary">
             <span class="material-symbols-outlined">menu</span>
         </button>
     </div>
@@ -58,11 +66,13 @@
     <div id="overlay" class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-40 hidden lg:hidden"></div>
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+    <aside id="sidebar"
+        class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
         <div class="p-8 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="p-2 bg-primary rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+                    <span class="material-symbols-outlined text-on-primary text-xl"
+                        style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
                 </div>
                 <span class="font-headline font-extrabold tracking-tighter text-2xl text-primary">ebotconnect</span>
             </div>
@@ -71,32 +81,38 @@
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
-        
+
         <nav class="flex-grow px-4 space-y-2">
-            <a href="dashboard.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+            <a href="dashboard.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
                 <span class="material-symbols-outlined">dashboard</span>
                 Dashboard
             </a>
-            <a href="profile.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+            <a href="profile.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
                 <span class="material-symbols-outlined">business_center</span>
                 Business Profile
             </a>
-            <a href="connect.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
-                <span class="material-symbols-outlined">chat_bubble</span>
-                WhatsApp Bot
+            <a href="connect.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">hub</span>
+                Connect Socials
             </a>
-            <a href="pricing.html" class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+            <a href="pricing.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
                 <span class="material-symbols-outlined">payments</span>
                 Subscription
             </a>
-            <a href="messages.html" class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-semibold">
+            <a href="messages.html"
+                class="active-nav flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-semibold">
                 <span class="material-symbols-outlined">history</span>
                 Message Logs
             </a>
         </nav>
 
         <div class="p-6 border-t border-outline-variant/20">
-            <button id="logoutBtn" class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-error hover:bg-error-container/10 transition-all font-semibold">
+            <button id="logoutBtn"
+                class="flex items-center gap-4 px-4 py-3 w-full rounded-xl text-error hover:bg-error-container/10 transition-all font-semibold">
                 <span class="material-symbols-outlined">logout</span>
                 Logout
             </button>
@@ -106,7 +122,8 @@
     <!-- Main Content -->
     <main class="flex-grow lg:ml-72 p-6 lg:p-10">
         <header class="mb-10 pt-12 lg:pt-0">
-            <h1 class="text-3xl lg:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-2">Message Logs</h1>
+            <h1 class="text-3xl lg:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-2">Message
+                Logs</h1>
             <p class="text-on-surface-variant font-medium">History of all messages replied to by your bot.</p>
         </header>
 
@@ -114,9 +131,11 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-surface-container-low/50 border-b border-outline-variant/10">
-                        <th class="p-6 text-sm font-bold uppercase tracking-widest text-on-surface-variant">Customer</th>
+                        <th class="p-6 text-sm font-bold uppercase tracking-widest text-on-surface-variant">Customer
+                        </th>
                         <th class="p-6 text-sm font-bold uppercase tracking-widest text-on-surface-variant">Message</th>
-                        <th class="p-6 text-sm font-bold uppercase tracking-widest text-on-surface-variant">Bot Reply</th>
+                        <th class="p-6 text-sm font-bold uppercase tracking-widest text-on-surface-variant">Bot Reply
+                        </th>
                         <th class="p-6 text-sm font-bold uppercase tracking-widest text-on-surface-variant">Time</th>
                     </tr>
                 </thead>
@@ -184,4 +203,5 @@
     </script>
     <script src="js/ui.js"></script>
 </body>
+
 </html>
