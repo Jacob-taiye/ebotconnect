@@ -43,8 +43,12 @@ router.post('/logout', authenticateToken, async (req, res) => {
             console.log(`Cleared session files for user ${userId}`);
         }
 
-        // 3. Update database status
+        // 3. Update database status in both tables
         await db.execute('UPDATE whatsapp_sessions SET status = ? WHERE user_id = ?', ['disconnected', userId]);
+        await db.execute(
+            "UPDATE social_connections SET status = 'disconnected' WHERE user_id = ? AND platform = 'whatsapp'",
+            [userId]
+        );
 
         res.json({ message: "Logged out successfully" });
     } catch (error) {
