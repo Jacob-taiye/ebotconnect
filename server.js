@@ -40,11 +40,14 @@ io.on('connection', (socket) => {
     console.log(`[SOCKET] Socket ${socket.id} joining room: ${room}`);
     socket.join(room);
 
-    // If joining a user room, send current WhatsApp status immediately
     if (room.startsWith('user_')) {
       try {
         const userId = room.replace('user_', '');
-        const [rows] = await db.execute('SELECT status FROM whatsapp_sessions WHERE user_id = ?', [userId]);
+        // Check social_connections for WhatsApp status
+        const [rows] = await db.execute(
+          "SELECT status FROM social_connections WHERE user_id = ? AND platform = 'whatsapp'",
+          [userId]
+        );
         const currentStatus = rows.length > 0 ? rows[0].status : 'disconnected';
         console.log(`[SOCKET] Sending initial status (${currentStatus}) to user ${userId}`);
         socket.emit('status', currentStatus);
@@ -227,7 +230,10 @@ module.exports = { app, server, io };
 const { initializeWhatsApp } = require('./services/whatsapp');
 const startWhatsAppSessions = async () => {
   try {
-    const [rows] = await db.execute('SELECT user_id FROM whatsapp_sessions WHERE status = ?', ['connected']);
+    // Resume sessions from social_connections for WhatsApp platform
+    const [rows] = await db.execute(
+      "SELECT user_id FROM social_connections WHERE platform = 'whatsapp' AND status = 'connected'"
+    );
     console.log(`[BOOT] Resuming ${rows.length} WhatsApp sessions:`, rows.map(r => r.user_id));
     for (const row of rows) {
       initializeWhatsApp(row.user_id, io);
