@@ -79,6 +79,11 @@ router.post('/disconnect', authenticateToken, async (req, res) => {
             `DELETE FROM social_connections WHERE user_id = ? AND platform = ?`,
             [userId, platform]
         );
+
+        // If disconnecting WhatsApp, also update legacy table
+        if (platform === 'whatsapp') {
+            await db.execute('UPDATE whatsapp_sessions SET status = ? WHERE user_id = ?', ['disconnected', userId]);
+        }
         res.json({ message: `Successfully disconnected ${platform}` });
     } catch (error) {
         console.error(`[META DISCONNECT ERROR]:`, error);
