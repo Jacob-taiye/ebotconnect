@@ -227,9 +227,10 @@ app.use((req, res) => {
 module.exports = { app, server, io };
 
 // --- Auto-Initialize WhatsApp Sessions ---
-const { initializeWhatsApp } = require('./services/whatsapp');
+const { initializeWhatsApp, setIO } = require('./services/whatsapp');
 const startWhatsAppSessions = async () => {
   try {
+    setIO(io);
     // Resume sessions from social_connections for WhatsApp platform
     const [rows] = await db.execute(
       "SELECT user_id FROM social_connections WHERE platform = 'whatsapp' AND status = 'connected'"
