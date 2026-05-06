@@ -15,6 +15,11 @@ const pino = require('pino');
 const sessions = new Map();
 const initializing = new Set();
 const pendingBots = new Map();
+let globalIo = null;
+
+function setIO(io) {
+    globalIo = io;
+}
 
 /**
  * Initialize a WhatsApp session for a specific user
@@ -82,23 +87,26 @@ async function initializeWhatsApp(userId, io) {
                 const error = lastDisconnect?.error;
                 const statusCode = (error instanceof Boom)?.output?.statusCode || error?.message;
 
+                // REFINED FATAL ERRORS: Only logout and session conflicts are truly fatal.
+                // 401/403/409 can sometimes be resolved by a fresh init.
+                // Stream errors are definitely recoverable.
                 const isFatal = [
                     DisconnectReason.loggedOut,
-                    401,
-                    409,
-                    'Stream Errored (unknown)',
-                    'Stream Errored (conflict)'
-                ].includes(statusCode);
+                    // 401, // Unauthorized - sometimes happens on stale session, try re-init
+                    // 409, // Conflict - sometimes happens on stale session, try re-init
+                ].includes(statusCode) || statusCode === 'Logged Out';
 
                 console.log(`[SESSION] Connection closed for user ${uId}. Error: ${statusCode}. Fatal: ${isFatal}`);
 
                 sessions.delete(uId);
 
                 if (!isFatal) {
-                    console.log(`[SESSION] Recoverable error. Reconnecting in 5s for user ${uId}...`);
-                    setTimeout(() => initializeWhatsApp(uId, io), 5000);
+                    // Exponential backoff or simple delay? Let's use a standard 5s-10s delay to avoid spamming
+                    console.log(`[SESSION] Recoverable error (${statusCode}). Reconnecting in 10s for user ${uId}...`);
+                    setTimeout(() => initializeWhatsApp(uId, io), 10000);
+                    io.to(`user_${uId}`).emit('status', 'connecting');
                 } else {
-                    console.log(`[SESSION] Fatal connection error for user ${uId}. Stopping bot.`);
+                    console.log(`[SESSION] Fatal connection error for user ${uId}. Stopping bot and updating DB.`);
                     await db.execute('UPDATE whatsapp_sessions SET status = ? WHERE user_id = ?', ['disconnected', uId]);
                     await db.execute('UPDATE social_connections SET status = ? WHERE user_id = ? AND platform = ?', ['disconnected', uId, 'whatsapp']);
                     io.to(`user_${uId}`).emit('status', 'disconnected');
@@ -179,7 +187,10 @@ async function initializeWhatsApp(userId, io) {
             // Helper function to execute bot reply
             const executeBotReply = async () => {
                 try {
-                    if (!sessions.has(currentUserId)) return;
+                    if (!sessions.has(currentUserId)) {
+                        console.log(`[BOT_REPLY] [USER ${currentUserId}] FAILED: No active session in memory.`);
+                        return;
+                    }
 
                     let body = "";
                     if (msg.message.conversation) body = msg.message.conversation;
@@ -187,32 +198,42 @@ async function initializeWhatsApp(userId, io) {
                     else if (msg.message.imageMessage && msg.message.imageMessage.caption) body = msg.message.imageMessage.caption;
                     else if (msg.message.videoMessage && msg.message.videoMessage.caption) body = msg.message.videoMessage.caption;
 
-                    if (!body) return;
+                    if (!body) {
+                        console.log(`[BOT_REPLY] [USER ${currentUserId}] IGNORED: Empty message body.`);
+                        return;
+                    }
 
                     // Final Subscription Check
                     const [subs] = await db.execute(
-                        'SELECT status FROM subscriptions WHERE user_id = ? AND status = ? AND expiry_date > NOW()',
+                        'SELECT status, expiry_date FROM subscriptions WHERE user_id = ? AND status = ? AND expiry_date > NOW()',
                         [currentUserId, 'active']
                     );
-                    if (!subs || subs.length === 0) return;
 
-                    console.log(`[BOT_REPLY] Generating reply for ${remoteJid}...`);
+                    if (!subs || subs.length === 0) {
+                        console.log(`[BOT_REPLY] [USER ${currentUserId}] FAILED: No active subscription or expired.`);
+                        return;
+                    }
+
+                    console.log(`[BOT_REPLY] [USER ${currentUserId}] Generating reply for ${remoteJid}...`);
                     const replyText = await generateAIReply(body, biz);
 
+                    const sock = sessions.get(currentUserId);
                     await sock.sendPresenceUpdate('composing', remoteJid);
+
                     setTimeout(async () => {
                         try {
                             await sock.sendMessage(remoteJid, { text: replyText });
+                            console.log(`[BOT_REPLY] [USER ${currentUserId}] Sent reply to ${remoteJid}`);
                             await db.execute(
                                 'INSERT INTO messages (user_id, customer_number, message, bot_reply) VALUES (?, ?, ?, ?)',
                                 [currentUserId, remoteJid.split('@')[0], body, replyText]
                             );
                         } catch (err) {
-                            console.error(`[ERROR] Send failed:`, err.message);
+                            console.error(`[BOT_REPLY] [USER ${currentUserId}] Send failed:`, err.message);
                         }
                     }, 2000);
                 } catch (err) {
-                    console.error(`[FATAL] Bot Error during reply:`, err);
+                    console.error(`[BOT_REPLY] [USER ${currentUserId}] FATAL ERROR during reply:`, err);
                 }
             };
 
@@ -338,4 +359,26 @@ INSTRUCTIONS:
     }
 }
 
-module.exports = { initializeWhatsApp, sessions };
+module.exports = { initializeWhatsApp, sessions, setIO };
+
+// --- WATCHDOG: Ensure sessions in DB are running in memory ---
+// Runs every 15 minutes to recover from silent crashes
+setInterval(async () => {
+    try {
+        if (!globalIo) return;
+
+        const [rows] = await db.execute(
+            "SELECT user_id FROM social_connections WHERE platform = 'whatsapp' AND status = 'connected'"
+        );
+
+        for (const row of rows) {
+            const uId = parseInt(row.user_id);
+            if (!sessions.has(uId) && !initializing.has(uId)) {
+                console.log(`[WATCHDOG] Found zombie session for user ${uId} in DB. Resurrecting...`);
+                initializeWhatsApp(uId, globalIo);
+            }
+        }
+    } catch (err) {
+        console.error('[WATCHDOG ERROR]:', err.message);
+    }
+}, 1000 * 60 * 15);
