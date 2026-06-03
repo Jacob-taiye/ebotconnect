@@ -20,14 +20,14 @@ const apiAuth = async (req, res, next) => {
 
     const userId = keys[0].user_id;
 
-    // Check if the user has an active subscription
+    // Check if the user has an active Premium subscription
     const [subs] = await db.execute(
-      'SELECT id FROM subscriptions WHERE user_id = ? AND status = "active" AND expiry_date >= NOW()',
+      'SELECT id FROM subscriptions WHERE user_id = ? AND status = "active" AND plan_name = "Premium" AND expiry_date >= NOW()',
       [userId]
     );
 
     if (subs.length === 0) {
-      return res.status(403).json({ error: 'Active subscription required for API access' });
+      return res.status(403).json({ error: 'An active Premium subscription is required for API access' });
     }
 
     // Attach user_id to the request

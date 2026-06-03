@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" type="image/jpeg"
+        href="https://res.cloudinary.com/dir6veymq/image/upload/v1777374357/6019309177320180754_xna8oi.jpg">
+    <title>Developer API Docs | ebotconnect</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#00687b",
+                        "primary-container": "#00a3c1",
+                        "on-primary": "#ffffff",
+                        "surface": "#f5fafc",
+                        "on-surface": "#171c1e",
+                        "surface-container": "#eaeff1",
+                        "surface-container-low": "#eff4f7",
+                        "outline-variant": "#bcc9cd",
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+
+<body class="bg-surface font-body text-on-surface min-h-screen flex">
+    
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="w-72 bg-white border-r border-outline-variant/30 flex flex-col fixed h-full z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div class="p-8 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-primary rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-primary text-xl"
+                        style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+                </div>
+                <span class="font-headline font-extrabold tracking-tighter text-2xl text-primary">ebotconnect</span>
+            </div>
+        </div>
+
+        <nav class="flex-grow px-4 space-y-2 mt-4">
+            <a href="dashboard.html"
+                class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined">arrow_back</span>
+                Back to Dashboard
+            </a>
+            <div class="px-4 py-3 mt-4 text-xs font-bold text-outline-variant uppercase tracking-wider">API Reference</div>
+            <a href="#auth" class="flex items-center gap-4 px-4 py-2 text-sm hover:text-primary transition-colors text-on-surface-variant font-medium">Authentication</a>
+            <a href="#status" class="flex items-center gap-4 px-4 py-2 text-sm hover:text-primary transition-colors text-on-surface-variant font-medium">Check Status</a>
+            <a href="#send" class="flex items-center gap-4 px-4 py-2 text-sm hover:text-primary transition-colors text-on-surface-variant font-medium">Send Message</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-grow lg:ml-72 p-6 lg:p-10">
+        <header class="mb-10 pt-8 lg:pt-0">
+            <h1 class="text-3xl lg:text-4xl font-headline font-extrabold text-on-surface tracking-tight mb-4">Developer API Documentation</h1>
+            <p class="text-on-surface-variant font-medium max-w-3xl">Integrate ebotconnect directly into your software. You can programmatically check your bot's connection status and dispatch messages to your customers. Note: API Access requires the <strong>Premium</strong> subscription plan.</p>
+        </header>
+
+        <div class="max-w-4xl space-y-12 pb-20">
+            <!-- Authentication -->
+            <section id="auth" class="bg-white p-8 rounded-3xl border border-outline-variant/20 shadow-sm">
+                <h2 class="text-2xl font-headline font-bold text-on-surface mb-4">Authentication</h2>
+                <p class="text-on-surface-variant mb-6">All API endpoints are authenticated using an API key. You can generate your API key from the Developer API section in your dashboard.</p>
+                <div class="bg-surface-container-low p-5 rounded-2xl border border-outline-variant/20">
+                    <p class="text-sm font-semibold mb-2">Include your key in the header of every request:</p>
+                    <code class="bg-surface px-3 py-1 rounded text-primary font-bold">x-api-key: ebot_your_api_key_here</code>
+                </div>
+                <div class="mt-6 flex items-start gap-3 text-sm text-on-surface-variant">
+                    <span class="material-symbols-outlined text-error text-xl">warning</span>
+                    <p>Keep your API key secure. Never share it publicly or expose it in client-side code.</p>
+                </div>
+            </section>
+
+            <!-- Status Endpoint -->
+            <section id="status" class="bg-white p-8 rounded-3xl border border-outline-variant/20 shadow-sm">
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="px-3 py-1 bg-green-100 text-green-800 font-bold rounded-lg text-sm">GET</span>
+                    <h2 class="text-xl font-headline font-bold text-on-surface">/api/v1/status</h2>
+                </div>
+                <p class="text-on-surface-variant mb-6">Check the current connection status of your WhatsApp bot session.</p>
+                
+                <h3 class="font-bold text-sm text-on-surface uppercase mb-3">Example Request (cURL)</h3>
+                <pre class="bg-on-surface text-surface-container-lowest p-4 rounded-xl overflow-x-auto text-sm"><code>curl -X GET https://your-server.onrender.com/api/v1/status \
+  -H "x-api-key: your_api_key_here"</code></pre>
+
+                <h3 class="font-bold text-sm text-on-surface uppercase mt-6 mb-3">Response</h3>
+                <pre class="bg-surface-container text-on-surface p-4 rounded-xl overflow-x-auto text-sm border border-outline-variant/20"><code>{
+  "status": "connected",
+  "connected_at": "2023-10-25T14:30:00.000Z"
+}</code></pre>
+            </section>
+
+            <!-- Send Message Endpoint -->
+            <section id="send" class="bg-white p-8 rounded-3xl border border-outline-variant/20 shadow-sm">
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="px-3 py-1 bg-blue-100 text-blue-800 font-bold rounded-lg text-sm">POST</span>
+                    <h2 class="text-xl font-headline font-bold text-on-surface">/api/v1/messages/send</h2>
+                </div>
+                <p class="text-on-surface-variant mb-6">Send a text message to a specific WhatsApp number. Ensure your bot is active and connected before sending.</p>
+                
+                <h3 class="font-bold text-sm text-on-surface uppercase mb-3">JSON Body Parameters</h3>
+                <div class="bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-hidden mb-6">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-surface-container border-b border-outline-variant/20">
+                            <tr>
+                                <th class="p-4 font-bold">Parameter</th>
+                                <th class="p-4 font-bold">Type</th>
+                                <th class="p-4 font-bold">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/10">
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-primary">to</td>
+                                <td class="p-4 text-on-surface-variant">String</td>
+                                <td class="p-4">The recipient's phone number including country code (e.g., 2348000000000).</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-primary">message</td>
+                                <td class="p-4 text-on-surface-variant">String</td>
+                                <td class="p-4">The text content of the message you want to send.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="font-bold text-sm text-on-surface uppercase mb-3">Example Request (cURL)</h3>
+                <pre class="bg-on-surface text-surface-container-lowest p-4 rounded-xl overflow-x-auto text-sm mb-6"><code>curl -X POST https://your-server.onrender.com/api/v1/messages/send \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key_here" \
+  -d '{
+    "to": "2348123456789",
+    "message": "Hello from the ebotconnect API!"
+  }'</code></pre>
+
+                <h3 class="font-bold text-sm text-on-surface uppercase mb-3">Response</h3>
+                <pre class="bg-surface-container text-on-surface p-4 rounded-xl overflow-x-auto text-sm border border-outline-variant/20"><code>{
+  "success": true,
+  "message": "Message sent successfully"
+}</code></pre>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
