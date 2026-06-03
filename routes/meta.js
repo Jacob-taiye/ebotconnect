@@ -79,6 +79,11 @@ router.post('/disconnect', authenticateToken, async (req, res) => {
             `DELETE FROM social_connections WHERE user_id = ? AND platform = ?`,
             [userId, platform]
         );
+
+        // If disconnecting WhatsApp, also update legacy table
+        if (platform === 'whatsapp') {
+            await db.execute('UPDATE whatsapp_sessions SET status = ? WHERE user_id = ?', ['disconnected', userId]);
+        }
         res.json({ message: `Successfully disconnected ${platform}` });
     } catch (error) {
         console.error(`[META DISCONNECT ERROR]:`, error);
@@ -117,8 +122,14 @@ router.post('/exchange-token', authenticateToken, async (req, res) => {
                 `https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`
             );
             const pages = pagesRes.data.data;
+            console.log(`[META] Exchange Token: Found ${pages ? pages.length : 0} pages for user.`);
+            
             if (!pages || pages.length === 0) {
-                return res.status(404).json({ message: 'No Facebook Pages found for this account. Make sure you manage a Facebook Page.' });
+                console.warn(`[META] No pages found. Full Response:`, JSON.stringify(pagesRes.data));
+                return res.status(404).json({ 
+                    message: 'No Facebook Pages found. Requirements:\n1. You must have a Facebook Page (not just a profile).\n2. You must select the pages in the Facebook popup.\n3. Your Meta App must be in Live mode OR you must be a Tester in the App Dashboard.',
+                    diagnostic: pagesRes.data 
+                });
             }
 
             const saved = [];

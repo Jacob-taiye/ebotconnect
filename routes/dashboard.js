@@ -128,4 +128,51 @@ router.get('/messages', authenticateToken, async (req, res) => {
   }
 });
 
+// Get API Key Status
+router.get('/api-keys', authenticateToken, async (req, res) => {
+  try {
+    const [keys] = await db.execute(
+      'SELECT api_key, status, created_at FROM api_keys WHERE user_id = ? AND status = "active" LIMIT 1',
+      [req.user.userId]
+    );
+    res.json(keys[0] || null);
+  } catch (error) {
+    console.error('Fetch API Key Error:', error);
+    res.status(500).json({ message: "Error fetching API key" });
+  }
+});
+
+// Generate or Revoke API Key
+router.post('/api-keys/generate', authenticateToken, async (req, res) => {
+  const { action } = req.body; // 'generate' or 'revoke'
+  const userId = req.user.userId;
+
+  try {
+    if (action === 'revoke') {
+      await db.execute('UPDATE api_keys SET status = "revoked" WHERE user_id = ?', [userId]);
+      return res.json({ success: true, message: "API key revoked" });
+    }
+
+    if (action === 'generate') {
+      const crypto = require('crypto');
+      const newKey = 'ebot_' + crypto.randomBytes(24).toString('hex');
+      
+      // Revoke any existing active keys
+      await db.execute('UPDATE api_keys SET status = "revoked" WHERE user_id = ?', [userId]);
+      
+      // Insert new key
+      await db.execute(
+        'INSERT INTO api_keys (user_id, api_key, status) VALUES (?, ?, "active")',
+        [userId, newKey]
+      );
+      return res.json({ success: true, apiKey: newKey });
+    }
+
+    res.status(400).json({ message: "Invalid action" });
+  } catch (error) {
+    console.error('Generate API Key Error:', error);
+    res.status(500).json({ message: "Error managing API key" });
+  }
+});
+
 module.exports = router;

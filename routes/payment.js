@@ -77,20 +77,34 @@ router.post('/webhook', async (req, res) => {
 });
 
 async function updateSubscription(userId, data) {
-    const amount = data.amount;
-
-    // Fetch dynamic pricing from platform_settings
-    const [settings] = await db.execute('SELECT setting_key, setting_value FROM platform_settings');
-    const pricing = {};
-    settings.forEach(s => pricing[s.setting_key] = parseInt(s.setting_value));
+    const amount = parseFloat(data.amount);
 
     let planName = 'Basic';
-    if (amount >= (pricing.price_enterprise || 30000)) planName = 'Enterprise';
-    else if (amount >= (pricing.price_pro || 15000)) planName = 'Pro';
+    let durationMonths = 1;
+
+    if (amount === 15000) {
+        planName = 'Premium';
+        durationMonths = 12;
+    } else if (amount === 1500) {
+        planName = 'Premium';
+        durationMonths = 1;
+    } else if (amount === 10000) {
+        planName = 'Standard';
+        durationMonths = 12;
+    } else if (amount === 1000) {
+        planName = 'Standard';
+        durationMonths = 1;
+    } else if (amount === 7000) {
+        planName = 'Basic';
+        durationMonths = 12;
+    } else if (amount === 700) {
+        planName = 'Basic';
+        durationMonths = 1;
+    }
 
     const startDate = new Date();
     const expiryDate = new Date();
-    expiryDate.setMonth(expiryDate.getMonth() + 1);
+    expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
 
     // Safely update or insert subscription
     const [existing] = await db.execute('SELECT id FROM subscriptions WHERE user_id = ?', [userId]);

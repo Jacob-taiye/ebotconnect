@@ -1,0 +1,85 @@
+const express = require('express');
+const router = express.Router();
+const { initializeWhatsApp, sessions } = require('../services/whatsapp');
+const authenticateToken = require('../middleware/auth');
+const fs = require('fs');
+const path = require('path');
+const db = require('../config/db');
+
+// Start WhatsApp Engine for User
+router.post('/start', authenticateToken, async (req, res) => {
+    try {
+        const io = req.app.get('socketio');
+        await initializeWhatsApp(req.user.userId, io);
+        res.json({ message: "WhatsApp engine started" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to start WhatsApp engine" });
+    }
+});
+
+// Restart WhatsApp Engine (Force Re-init)
+router.post('/restart', authenticateToken, async (req, res) => {
+    const userId = parseInt(req.user.userId);
+    try {
+        console.log(`[RESTART] User ${userId} requested manual restart.`);
+        const io = req.app.get('socketio');
+        
+        // Remove from memory first to force re-init
+        if (sessions.has(userId)) {
+            try {
+                const sock = sessions.get(userId);
+                sock.ev.removeAllListeners();
+                sock.end();
+            } catch (e) {}
+            sessions.delete(userId);
+        }
+        
+        await initializeWhatsApp(userId, io);
+        res.json({ message: "WhatsApp engine restarted" });
+    } catch (error) {
+        console.error("Restart Error:", error);
+        res.status(500).json({ message: "Failed to restart WhatsApp engine" });
+    }
+});
+
+// Logout/Disconnect WhatsApp
+router.post('/logout', authenticateToken, async (req, res) => {
+    const userId = parseInt(req.user.userId);
+    try {
+        console.log(`Resetting WhatsApp session for user ${userId}...`);
+
+        // 1. Close session in memory if exists
+        if (sessions.has(userId)) {
+            try {
+                const sock = sessions.get(userId);
+                sock.ev.removeAllListeners(); // Stop listening to events
+                sock.end(); // Close connection
+            } catch (e) {
+                console.log("Error closing socket in memory:", e.message);
+            }
+            sessions.delete(userId);
+        }
+
+        // 2. Clear session files from folder
+        const sessionPath = path.join(__dirname, `../sessions/user_${userId}`);
+        if (fs.existsSync(sessionPath)) {
+            fs.rmSync(sessionPath, { recursive: true, force: true });
+            console.log(`Cleared session files for user ${userId}`);
+        }
+
+        // 3. Update database status in both tables
+        await db.execute('UPDATE whatsapp_sessions SET status = ? WHERE user_id = ?', ['disconnected', userId]);
+        await db.execute(
+            "UPDATE social_connections SET status = 'disconnected' WHERE user_id = ? AND platform = 'whatsapp'",
+            [userId]
+        );
+
+        res.json({ message: "Logged out successfully" });
+    } catch (error) {
+        console.error("Logout Error:", error);
+        res.status(500).json({ message: "Logout failed" });
+    }
+});
+
+module.exports = router;
