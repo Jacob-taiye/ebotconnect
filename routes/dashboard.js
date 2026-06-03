@@ -132,7 +132,7 @@ router.get('/messages', authenticateToken, async (req, res) => {
 router.get('/api-keys', authenticateToken, async (req, res) => {
   try {
     const [keys] = await db.execute(
-      'SELECT api_key, status, created_at FROM api_keys WHERE user_id = ? AND status = "active" LIMIT 1',
+      "SELECT api_key, status, created_at FROM api_keys WHERE user_id = ? AND status = 'active' LIMIT 1",
       [req.user.userId]
     );
     res.json(keys[0] || null);
@@ -149,7 +149,7 @@ router.post('/api-keys/generate', authenticateToken, async (req, res) => {
 
   try {
     if (action === 'revoke') {
-      await db.execute('UPDATE api_keys SET status = "revoked" WHERE user_id = ?', [userId]);
+      await db.execute("UPDATE api_keys SET status = 'revoked' WHERE user_id = ?", [userId]);
       return res.json({ success: true, message: "API key revoked" });
     }
 
@@ -158,11 +158,11 @@ router.post('/api-keys/generate', authenticateToken, async (req, res) => {
       const newKey = 'ebot_' + crypto.randomBytes(24).toString('hex');
       
       // Revoke any existing active keys
-      await db.execute('UPDATE api_keys SET status = "revoked" WHERE user_id = ?', [userId]);
+      await db.execute("UPDATE api_keys SET status = 'revoked' WHERE user_id = ?", [userId]);
       
       // Insert new key
       await db.execute(
-        'INSERT INTO api_keys (user_id, api_key, status) VALUES (?, ?, "active")',
+        "INSERT INTO api_keys (user_id, api_key, status) VALUES (?, ?, 'active')",
         [userId, newKey]
       );
       return res.json({ success: true, apiKey: newKey });
